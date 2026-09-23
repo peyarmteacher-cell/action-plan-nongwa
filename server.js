@@ -35,29 +35,174 @@ const ai = new GoogleGenAI({
 // In-Memory Data Store (Initialized with Seed Data)
 // ==========================================
 
-let schoolInfo = {
-  id: 1,
-  code: '10310001',
-  name: 'โรงเรียนอนุบาลพัฒนาวิทยา',
-  province: 'บุรีรัมย์',
-  affiliation: 'สำนักงานเขตพื้นที่การศึกษาประถมศึกษาบุรีรัมย์ เขต 1',
-  director_name: 'นายธีระพล เกียรติวิทยา',
-  director_position: 'ผู้อำนวยการโรงเรียนอนุบาลพัฒนาวิทยา',
-  plan_officer_name: 'นางวิไลพร งบมั่นคง',
-  logo_url: ''
-};
+let schools = [
+  {
+    id: 1,
+    code: '10310001',
+    smis_code: '10310001',
+    name: 'โรงเรียนอนุบาลพัฒนาวิทยา',
+    affiliation: 'สำนักงานเขตพื้นที่การศึกษาประถมศึกษาบุรีรัมย์ เขต 1',
+    province: 'บุรีรัมย์',
+    district: 'เมืองบุรีรัมย์',
+    subdistrict: 'ในเมือง',
+    address: '123 ถนนจิระ ตำบลในเมือง อำเภอเมือง จังหวัดบุรีรัมย์ 31000',
+    postal_code: '31000',
+    phone: '044-611234',
+    email: 'contact@anubanpat.ac.th',
+    website: 'https://www.anubanpat.ac.th',
+    director_name: 'นายธีระพล เกียรติวิทยา',
+    director_position: 'ผู้อำนวยการโรงเรียนอนุบาลพัฒนาวิทยา (ผู้อำนวยการเชี่ยวชาญ)',
+    plan_officer_name: 'นางวิไลพร งบมั่นคง',
+    assigned_admin_name: 'นางสาวสุภาวดี ดูแลระบบ',
+    assigned_admin_id: 2,
+    logo_url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/87/Garuda_Emb_Thailand.svg/200px-Garuda_Emb_Thailand.svg.png',
+    status: 'active', // active, pending, inactive
+    created_at: '2024-05-01'
+  },
+  {
+    id: 2,
+    code: '10310002',
+    smis_code: '10310002',
+    name: 'โรงเรียนมัธยมศึกษาเกียรติวิทยาคาร',
+    affiliation: 'สำนักงานเขตพื้นที่การศึกษามัธยมศึกษาบุรีรัมย์',
+    province: 'บุรีรัมย์',
+    district: 'เมืองบุรีรัมย์',
+    subdistrict: 'อิสาณ',
+    address: '456 ถนนบุรีรัมย์-นางรอง ตำบลอิสาณ อำเภอเมือง จังหวัดบุรีรัมย์ 31000',
+    postal_code: '31000',
+    phone: '044-622345',
+    email: 'info@kiatwittaya.ac.th',
+    website: 'https://www.kiatwittaya.ac.th',
+    director_name: 'นายสมเกียรติ มัธยมเลิศ',
+    director_position: 'ผู้อำนวยการเชี่ยวชาญพิเศษ',
+    plan_officer_name: 'นายชลิต แผนมัธยม',
+    assigned_admin_name: 'นายอดิศร ไอทีโรงเรียน',
+    assigned_admin_id: 11,
+    logo_url: '',
+    status: 'active',
+    created_at: '2024-06-15'
+  },
+  {
+    id: 3,
+    code: '10310003',
+    smis_code: '10310003',
+    name: 'โรงเรียนบ้านหนองบัวประชาสรรค์',
+    affiliation: 'สำนักงานเขตพื้นที่การศึกษาประถมศึกษาบุรีรัมย์ เขต 2',
+    province: 'บุรีรัมย์',
+    district: 'ประโคนชัย',
+    subdistrict: 'ประโคนชัย',
+    address: '88 หมู่ 4 ตำบลประโคนชัย อำเภอประโคนชัย จังหวัดบุรีรัมย์ 31140',
+    postal_code: '31140',
+    phone: '044-671890',
+    email: 'nongbua@brm2.go.th',
+    website: '',
+    director_name: 'นางปราณี ศรีสุข',
+    director_position: 'ผู้อำนวยการชำนาญการพิเศษ',
+    plan_officer_name: 'นายวิเชียร วางแผนดี',
+    assigned_admin_name: 'นายวิเชียร วางแผนดี',
+    assigned_admin_id: 12,
+    logo_url: '',
+    status: 'pending', // Pending activation by Super Admin
+    created_at: '2024-09-01'
+  }
+];
+
+let schoolInfo = schools[0];
 
 let users = [
-  { id: 1, username: 'admin', password: '123', name: 'ผู้ดูแลระบบส่วนกลาง', position: 'นักวิชาการคอมพิวเตอร์', department: 'budget', role: 'admin', phone: '0812345678', email: 'admin@school.ac.th', is_approved: 1 },
-  { id: 2, username: 'director', password: '123', name: 'นายธีระพล เกียรติวิทยา', position: 'ผู้อำนวยการโรงเรียน', department: 'central', role: 'director', phone: '0891234567', email: 'director@school.ac.th', is_approved: 1 },
-  { id: 3, username: 'planofficer', password: '123', name: 'นางวิไลพร งบมั่นคง', position: 'เจ้าหน้าที่แผนงานและงบประมาณ', department: 'budget', role: 'plan_officer', phone: '0867891234', email: 'plan@school.ac.th', is_approved: 1 },
-  { id: 4, username: 'head_academic', password: '123', name: 'นางกัญญา วิชาการดี', position: 'หัวหน้ากลุ่มบริหารวิชาการ', department: 'academic', role: 'department_head', phone: '0856781234', email: 'academic@school.ac.th', is_approved: 1 },
-  { id: 5, username: 'head_budget', password: '123', name: 'นายสุรชัย บัญชีทรัพย์', position: 'หัวหน้ากลุ่มบริหารงบประมาณ', department: 'budget', role: 'department_head', phone: '0845671234', email: 'budget@school.ac.th', is_approved: 1 },
-  { id: 6, username: 'head_personnel', password: '123', name: 'นางสาวพิมพ์ใจ เสริมบุคคล', position: 'หัวหน้ากลุ่มบริหารงานบุคคล', department: 'personnel', role: 'department_head', phone: '0834561234', email: 'personnel@school.ac.th', is_approved: 1 },
-  { id: 7, username: 'head_general', password: '123', name: 'นายพิชิต สภาพแวดล้อม', position: 'หัวหน้ากลุ่มบริหารทั่วไป', department: 'general', role: 'department_head', phone: '0823451234', email: 'general@school.ac.th', is_approved: 1 },
-  { id: 8, username: 'teacher_somchai', password: '123', name: 'นายสมชาย สอนสนุก', position: 'ครูชำนาญการ (วิชาการ)', department: 'academic', role: 'teacher', phone: '0811112222', email: 'somchai@school.ac.th', is_approved: 1 },
-  { id: 9, username: 'teacher_somying', password: '123', name: 'นางสมหญิง กิจกรรมเลิศ', position: 'ครู ค.ศ. 1 (ทั่วไป)', department: 'general', role: 'teacher', phone: '0822223333', email: 'somying@school.ac.th', is_approved: 1 }
+  { id: 1, username: 'superadmin', id_card: '1310000000001', password: '123', name: 'นายธีระพล ผู้ดูแลระบบเขตพื้นที่ฯ', position: 'ผู้อำนวยการกลุ่มนโยบายและแผน (สพป./สพฐ.)', department: 'central', role: 'super_admin', phone: '0812345678', email: 'superadmin@obec.go.th', school_id: null, is_approved: 1, must_change_password: 0 },
+  { id: 2, username: 'schooladmin', id_card: '1310000000002', password: '123', name: 'นางสาวสุภาวดี ดูแลระบบ', position: 'ผู้ดูแลระบบสารสนเทศโรงเรียน', department: 'budget', role: 'school_admin', phone: '0823456789', email: 'admin@anubanpat.ac.th', school_id: 1, is_approved: 1, must_change_password: 0 },
+  { id: 3, username: 'director', id_card: '1310000000003', password: '123', name: 'นายธีระพล เกียรติวิทยา', position: 'ผู้อำนวยการโรงเรียนอนุบาลพัฒนาวิทยา (ผู้อำนวยการเชี่ยวชาญ)', department: 'central', role: 'director', phone: '0891234567', email: 'director@anubanpat.ac.th', school_id: 1, is_approved: 1, must_change_password: 0 },
+  { id: 4, username: 'deputy_director', id_card: '1310000000004', password: '123', name: 'นายเอกชัย รองวิชาการ', position: 'รองผู้อำนวยการโรงเรียน (รองผู้อำนวยการชำนาญการพิเศษ)', department: 'central', role: 'deputy_director', phone: '0897654321', email: 'deputy@anubanpat.ac.th', school_id: 1, is_approved: 1, must_change_password: 0 },
+  { id: 5, username: 'planofficer', id_card: '1310000000005', password: '123', name: 'นางวิไลพร งบมั่นคง', position: 'เจ้าหน้าที่แผนงานและงบประมาณ (ครูชำนาญการพิเศษ)', department: 'budget', role: 'plan_officer', phone: '0867891234', email: 'plan@anubanpat.ac.th', school_id: 1, is_approved: 1, must_change_password: 0 },
+  { id: 6, username: 'head_academic', id_card: '1310000000006', password: '123', name: 'นางกัญญา วิชาการดี', position: 'หัวหน้ากลุ่มบริหารวิชาการ (ครูเชี่ยวชาญ คศ.4)', department: 'academic', role: 'department_head', phone: '0856781234', email: 'academic@anubanpat.ac.th', school_id: 1, is_approved: 1, must_change_password: 0 },
+  { id: 7, username: 'head_budget', id_card: '1310000000007', password: '123', name: 'นายสุรชัย บัญชีทรัพย์', position: 'หัวหน้ากลุ่มบริหารงบประมาณ (ครูชำนาญการพิเศษ คศ.3)', department: 'budget', role: 'department_head', phone: '0845671234', email: 'budget@anubanpat.ac.th', school_id: 1, is_approved: 1, must_change_password: 0 },
+  { id: 8, username: 'head_personnel', id_card: '1310000000008', password: '123', name: 'นางสาวพิมพ์ใจ เสริมบุคคล', position: 'หัวหน้ากลุ่มบริหารงานบุคคล (ครูชำนาญการพิเศษ คศ.3)', department: 'personnel', role: 'department_head', phone: '0834561234', email: 'personnel@anubanpat.ac.th', school_id: 1, is_approved: 1, must_change_password: 0 },
+  { id: 9, username: 'head_general', id_card: '1310000000009', password: '123', name: 'นายพิชิต สภาพแวดล้อม', position: 'หัวหน้ากลุ่มบริหารทั่วไป (ครูชำนาญการ คศ.2)', department: 'general', role: 'department_head', phone: '0823451234', email: 'general@anubanpat.ac.th', school_id: 1, is_approved: 1, must_change_password: 0 },
+  { id: 10, username: 'teacher_somchai', id_card: '1310000000010', password: '123', name: 'นายสมชาย สอนสนุก', position: 'ครู (คศ.1)', department: 'academic', role: 'teacher', phone: '0811112222', email: 'somchai@anubanpat.ac.th', school_id: 1, is_approved: 1, must_change_password: 0 },
+  { id: 11, username: 'teacher_somying', id_card: '1310000000011', password: '123', name: 'นางสมหญิง กิจกรรมเลิศ', position: 'ครูผู้ช่วย', department: 'general', role: 'teacher', phone: '0822223333', email: 'somying@anubanpat.ac.th', school_id: 1, is_approved: 1, must_change_password: 0 }
 ];
+
+// Student counts and subsidy rates per level (Government per-student subsidies + Learner Development Activities)
+let studentSubsidies = {
+  1: { // fiscal_year_id = 1
+    kindergarten: {
+      name: 'ระดับก่อนประถมศึกษา (อนุบาล 1-3)',
+      student_count: 80,
+      subsidy_rate: 1800.00, // บาท/คน/ปี
+      dev_rate: 464.00 // กิจกรรมพัฒนาคุณภาพผู้เรียน (กพพ. บาท/คน/ปี)
+    },
+    primary: {
+      name: 'ระดับประถมศึกษา (ป.1 - ป.6)',
+      student_count: 240,
+      subsidy_rate: 2050.00,
+      dev_rate: 516.00
+    },
+    lower_secondary: {
+      name: 'ระดับมัธยมศึกษาตอนต้น (ม.1 - ม.3)',
+      student_count: 120,
+      subsidy_rate: 3670.00,
+      dev_rate: 968.00
+    },
+    upper_secondary: {
+      name: 'ระดับมัธยมศึกษาตอนปลาย (ม.4 - ม.6)',
+      student_count: 60,
+      subsidy_rate: 4070.00,
+      dev_rate: 1022.00
+    }
+  },
+  2: { // fiscal_year_id = 2 (ปี 2567)
+    kindergarten: { name: 'ระดับก่อนประถมศึกษา (อนุบาล 1-3)', student_count: 75, subsidy_rate: 1800.00, dev_rate: 464.00 },
+    primary: { name: 'ระดับประถมศึกษา (ป.1 - ป.6)', student_count: 230, subsidy_rate: 2050.00, dev_rate: 516.00 },
+    lower_secondary: { name: 'ระดับมัธยมศึกษาตอนต้น (ม.1 - ม.3)', student_count: 110, subsidy_rate: 3670.00, dev_rate: 968.00 },
+    upper_secondary: { name: 'ระดับมัธยมศึกษาตอนปลาย (ม.4 - ม.6)', student_count: 50, subsidy_rate: 4070.00, dev_rate: 1022.00 }
+  }
+};
+
+function calculateSubsidies(fiscalYearId) {
+  const data = studentSubsidies[fiscalYearId] || studentSubsidies[1];
+  const keys = ['kindergarten', 'primary', 'lower_secondary', 'upper_secondary'];
+  
+  let totalStudents = 0;
+  let totalSubsidyAmount = 0;
+  let totalDevAmount = 0;
+  const breakdown = [];
+
+  keys.forEach(k => {
+    const item = data[k] || { name: k, student_count: 0, subsidy_rate: 0, dev_rate: 0 };
+    const count = parseInt(item.student_count) || 0;
+    const subRate = parseFloat(item.subsidy_rate) || 0;
+    const devRate = parseFloat(item.dev_rate) || 0;
+
+    const subTotal = count * subRate;
+    const devTotal = count * devRate;
+    const lineTotal = subTotal + devTotal;
+
+    totalStudents += count;
+    totalSubsidyAmount += subTotal;
+    totalDevAmount += devTotal;
+
+    breakdown.push({
+      key: k,
+      name: item.name,
+      student_count: count,
+      subsidy_rate: subRate,
+      dev_rate: devRate,
+      subsidy_amount: subTotal,
+      dev_amount: devTotal,
+      total_amount: lineTotal
+    });
+  });
+
+  const grandTotal = totalSubsidyAmount + totalDevAmount;
+  return {
+    totalStudents,
+    totalSubsidyAmount,
+    totalDevAmount,
+    grandTotal,
+    breakdown
+  };
+}
 
 let fiscalYears = [
   { id: 1, year: '2568', start_date: '2024-10-01', end_date: '2025-09-30', is_current: 1, status: 'active', notes: 'แผนปฏิบัติการประจำปีงบประมาณ พ.ศ. 2568 ขับเคลื่อนสู่ความเป็นเลิศ' },
@@ -400,29 +545,451 @@ function calculateProjectFinancials(projId) {
 }
 
 // ==========================================
-// Authentication & Session Mock
+// Authentication & Registration Endpoints
 // ==========================================
 
+// Verify 8-digit SMIS Code
+app.post('/api/auth/verify_smis.php', (req, res) => {
+  const { smis_code } = req.body;
+  const cleanCode = (smis_code || '').trim();
+
+  if (!cleanCode || cleanCode.length !== 8) {
+    return res.status(400).json({ status: 'error', message: 'กรุณากรอกรหัส SMIS ให้ถูกต้องครบ 8 หลัก' });
+  }
+
+  const school = schools.find(s => s.smis_code === cleanCode);
+  if (!school) {
+    return res.status(404).json({ 
+      status: 'error', 
+      message: `ไม่พบสถานศึกษารหัส SMIS "${cleanCode}" ในระบบ กรุณาติดต่อ Super Admin เพื่อเปิดใช้งานสถานศึกษา` 
+    });
+  }
+
+  if (school.status !== 'active') {
+    return res.status(403).json({ 
+      status: 'error', 
+      message: `สถานศึกษา "${school.name}" (SMIS: ${cleanCode}) ยังไม่ได้รับการเปิดใช้งานจาก Super Admin (สถานะปัจจุบัน: ${school.status === 'pending' ? 'รอเปิดใช้งาน' : 'ระงับการใช้งาน'})` 
+    });
+  }
+
+  res.json({
+    status: 'success',
+    school: {
+      id: school.id,
+      smis_code: school.smis_code,
+      name: school.name,
+      affiliation: school.affiliation,
+      province: school.province,
+      status: school.status
+    }
+  });
+});
+
+// Staff / Teacher Registration
+app.post('/api/auth/register.php', (req, res) => {
+  const { smis_code, id_card, name, position, department, phone, email } = req.body;
+
+  // 1. Verify SMIS 8-digit
+  const cleanSmis = (smis_code || '').trim();
+  if (!cleanSmis || cleanSmis.length !== 8) {
+    return res.status(400).json({ status: 'error', message: 'กรุณาระบุรหัส SMIS 8 หลักของโรงเรียน' });
+  }
+  const school = schools.find(s => s.smis_code === cleanSmis);
+  if (!school || school.status !== 'active') {
+    return res.status(400).json({ 
+      status: 'error', 
+      message: 'รหัส SMIS นี้ยังไม่ได้รับการเปิดใช้งานจาก Super Admin กรุณาติดต่อผู้ดูแลระบบเขตพื้นที่ฯ' 
+    });
+  }
+
+  // 2. Verify 13-digit National ID
+  const cleanIdCard = (id_card || '').replace(/[^0-9]/g, '');
+  if (cleanIdCard.length !== 13) {
+    return res.status(400).json({ status: 'error', message: 'กรุณากรอกหมายเลขประจำตัวประชาชนให้ถูกต้องครบ 13 หลัก' });
+  }
+
+  const existingUser = users.find(u => u.id_card === cleanIdCard || u.username === cleanIdCard);
+  if (existingUser) {
+    return res.status(400).json({ status: 'error', message: 'หมายเลขประจำตัวประชาชนนี้ได้ลงทะเบียนไว้ในระบบแล้ว' });
+  }
+
+  if (!name || !position) {
+    return res.status(400).json({ status: 'error', message: 'กรุณาระบุชื่อ-นามสกุล และตำแหน่งให้ครบถ้วน' });
+  }
+
+  // Map position to default role
+  let role = 'teacher';
+  if (position.includes('ผู้อำนวยการโรงเรียน')) role = 'director';
+  else if (position.includes('รองผู้อำนวยการ')) role = 'deputy_director';
+  else if (position.includes('แผนงาน') || position.includes('งบประมาณ')) role = 'plan_officer';
+
+  const newId = Math.max(...users.map(u => u.id), 0) + 1;
+  const newUser = {
+    id: newId,
+    username: cleanIdCard, // ใช้เลขบัตร ปชช. เป็น Username ได้
+    id_card: cleanIdCard,
+    password: '123456', // รหัสผ่านเริ่มต้นคือ 1-6 (123456)
+    name: name.trim(),
+    position: position.trim(),
+    department: department || 'academic',
+    role: role,
+    phone: phone || '',
+    email: email || '',
+    school_id: school.id,
+    is_approved: 1,
+    must_change_password: 1 // บังคับให้เปลี่ยนรหัสผ่านในครั้งต่อไป
+  };
+
+  users.push(newUser);
+
+  res.json({
+    status: 'success',
+    message: 'สมัครสมาชิกสำเร็จ! รหัสผ่านเริ่มต้นสำหรับการเข้าใช้งานครั้งแรกคือ 123456 ระบบจะให้ท่านเปลี่ยนรหัสผ่านใหม่เมื่อเข้าสู่ระบบ',
+    user: {
+      username: newUser.username,
+      name: newUser.name,
+      school_name: school.name
+    }
+  });
+});
+
+// Change Password Endpoint (for first login or profile update)
+app.post('/api/auth/change_password.php', (req, res) => {
+  const { username, current_password, new_password } = req.body;
+  const user = users.find(u => u.username === username || u.id_card === username);
+
+  if (!user) {
+    return res.status(404).json({ status: 'error', message: 'ไม่พบผู้ใช้งานในระบบ' });
+  }
+
+  if (!new_password || new_password.length < 6) {
+    return res.status(400).json({ status: 'error', message: 'รหัสผ่านใหม่ต้องมีความยาวอย่างน้อย 6 ตัวอักษร' });
+  }
+
+  // Update password and clear must_change_password flag
+  user.password = new_password;
+  user.must_change_password = 0;
+
+  res.json({ status: 'success', message: 'เปลี่ยนรหัสผ่านสำเร็จเรียบร้อยแล้ว' });
+});
+
+// Login Endpoint
 app.post('/api/login.php', (req, res) => {
   const { username, password } = req.body;
-  const user = users.find(u => u.username === username);
-  if (user && (!password || password === '123' || password === '123456' || user.password === password)) {
+  const cleanU = (username || '').trim();
+  const cleanP = (password || '').trim();
+
+  // Find user by username or 13-digit id_card
+  const user = users.find(u => u.username === cleanU || u.id_card === cleanU);
+  
+  if (user && (!cleanP || cleanP === '123' || cleanP === '123456' || user.password === cleanP)) {
+    const userSchool = schools.find(s => s.id === user.school_id) || schoolInfo;
+    
+    // Check if user is using default password (123 or 123456)
+    const isUsingDefaultPassword = (cleanP === '123456' || cleanP === '123' || user.password === '123456' || user.password === '123');
+    const mustChange = user.must_change_password === 1 || (isUsingDefaultPassword && user.must_change_password !== 0);
+
     res.json({
       status: 'success',
       user: {
         id: user.id,
         username: user.username,
+        id_card: user.id_card || '',
         name: user.name,
         role: user.role,
         department: user.department,
         position: user.position,
-        school_id: 1,
-        school_name: schoolInfo.name
-      }
+        school_id: userSchool.id,
+        school_name: userSchool.name,
+        smis_code: userSchool.smis_code,
+        logo_url: userSchool.logo_url,
+        must_change_password: mustChange ? 1 : 0
+      },
+      school: userSchool
     });
   } else {
-    res.status(401).json({ status: 'error', message: 'ชื่อผู้ใช้งานหรือรหัสผ่านไม่ถูกต้อง (ลองใช้ admin / director / planofficer / head_academic / teacher_somchai)' });
+    res.status(401).json({ 
+      status: 'error', 
+      message: 'ชื่อผู้ใช้งาน (หรือเลขบัตร ปชช.) หรือรหัสผ่านไม่ถูกต้อง (รหัสผ่านเริ่มต้นคือ 123456 หรือ 123)' 
+    });
   }
+});
+
+// ==========================================
+// School Profile & Settings (School Admin)
+// ==========================================
+
+app.get('/api/school/get_settings.php', (req, res) => {
+  res.json({
+    status: 'success',
+    school: schoolInfo,
+    all_schools: schools
+  });
+});
+
+app.post('/api/school/save_settings.php', (req, res) => {
+  const {
+    name, affiliation, province, district, subdistrict,
+    address, postal_code, phone, email, website,
+    director_name, director_position, plan_officer_name, logo_url
+  } = req.body;
+
+  if (!name) {
+    return res.status(400).json({ status: 'error', message: 'กรุณากรอกชื่อสถานศึกษา' });
+  }
+
+  // Update schoolInfo
+  schoolInfo.name = name.trim();
+  schoolInfo.affiliation = (affiliation || schoolInfo.affiliation).trim();
+  schoolInfo.province = (province || schoolInfo.province).trim();
+  schoolInfo.district = (district || schoolInfo.district || '').trim();
+  schoolInfo.subdistrict = (subdistrict || schoolInfo.subdistrict || '').trim();
+  schoolInfo.address = (address || schoolInfo.address || '').trim();
+  schoolInfo.postal_code = (postal_code || schoolInfo.postal_code || '').trim();
+  schoolInfo.phone = (phone || schoolInfo.phone || '').trim();
+  schoolInfo.email = (email || schoolInfo.email || '').trim();
+  schoolInfo.website = (website || schoolInfo.website || '').trim();
+  schoolInfo.director_name = (director_name || schoolInfo.director_name).trim();
+  schoolInfo.director_position = (director_position || schoolInfo.director_position).trim();
+  schoolInfo.plan_officer_name = (plan_officer_name || schoolInfo.plan_officer_name).trim();
+  if (logo_url !== undefined) {
+    schoolInfo.logo_url = logo_url.trim();
+  }
+
+  // Also sync into matching entry in schools list
+  const idx = schools.findIndex(s => s.id === schoolInfo.id);
+  if (idx !== -1) {
+    schools[idx] = { ...schools[idx], ...schoolInfo };
+  }
+
+  res.json({
+    status: 'success',
+    message: 'บันทึกข้อมูลและตราสัญลักษณ์สถานศึกษาสำเร็จ! ชื่อและโลโก้โรงเรียนจะแสดงบนส่วนของ Header ทันที',
+    school: schoolInfo
+  });
+});
+
+// ==========================================
+// Super Admin Endpoints (Manage Schools by SMIS)
+// ==========================================
+
+app.get('/api/superadmin/get_schools.php', (req, res) => {
+  const stats = {
+    totalSchools: schools.length,
+    activeSchools: schools.filter(s => s.status === 'active').length,
+    pendingSchools: schools.filter(s => s.status === 'pending').length,
+    totalUsers: users.length,
+    totalProjects: projects.length
+  };
+  res.json({
+    status: 'success',
+    schools,
+    stats,
+    users: users.map(u => ({ id: u.id, name: u.name, position: u.position, role: u.role, school_id: u.school_id }))
+  });
+});
+
+app.post('/api/superadmin/save_school.php', (req, res) => {
+  const { id, smis_code, name, affiliation, province, district, assigned_admin_name, status } = req.body;
+
+  const cleanSmis = (smis_code || '').trim();
+  if (!cleanSmis || cleanSmis.length !== 8) {
+    return res.status(400).json({ status: 'error', message: 'กรุณากรอกรหัส SMIS ให้ครบ 8 หลัก' });
+  }
+
+  if (!name) {
+    return res.status(400).json({ status: 'error', message: 'กรุณากรอกชื่อสถานศึกษา' });
+  }
+
+  if (id) {
+    const idx = schools.findIndex(s => s.id === parseInt(id));
+    if (idx !== -1) {
+      schools[idx] = {
+        ...schools[idx],
+        smis_code: cleanSmis,
+        code: cleanSmis,
+        name: name.trim(),
+        affiliation: affiliation || schools[idx].affiliation,
+        province: province || schools[idx].province,
+        district: district || schools[idx].district,
+        assigned_admin_name: assigned_admin_name || schools[idx].assigned_admin_name,
+        status: status || schools[idx].status
+      };
+      if (schools[idx].id === schoolInfo.id) {
+        schoolInfo = schools[idx];
+      }
+      return res.json({ status: 'success', message: 'อัปเดตข้อมูลสถานศึกษาสำเร็จ', school: schools[idx] });
+    }
+  } else {
+    // Check duplicate SMIS
+    if (schools.some(s => s.smis_code === cleanSmis)) {
+      return res.status(400).json({ status: 'error', message: `รหัส SMIS "${cleanSmis}" มีอยู่ในระบบแล้ว` });
+    }
+
+    const newId = Math.max(...schools.map(s => s.id), 0) + 1;
+    const newSchool = {
+      id: newId,
+      code: cleanSmis,
+      smis_code: cleanSmis,
+      name: name.trim(),
+      affiliation: affiliation || 'สำนักงานเขตพื้นที่การศึกษา',
+      province: province || 'บุรีรัมย์',
+      district: district || 'เมืองบุรีรัมย์',
+      subdistrict: '',
+      address: '',
+      postal_code: '',
+      phone: '',
+      email: '',
+      website: '',
+      director_name: 'ผู้อำนวยการสถานศึกษา',
+      director_position: 'ผู้อำนวยการโรงเรียน',
+      plan_officer_name: 'เจ้าหน้าที่แผนงาน',
+      assigned_admin_name: assigned_admin_name || 'ผู้ดูแลระบบโรงเรียน',
+      assigned_admin_id: null,
+      logo_url: '',
+      status: status || 'active',
+      created_at: new Date().toISOString().split('T')[0]
+    };
+    schools.push(newSchool);
+    res.json({ status: 'success', message: `เปิดใช้งานสถานศึกษา "${name}" ด้วยรหัส SMIS ${cleanSmis} สำเร็จ`, school: newSchool });
+  }
+});
+
+app.post('/api/superadmin/toggle_school_status.php', (req, res) => {
+  const { id, status } = req.body;
+  const school = schools.find(s => s.id === parseInt(id));
+  if (!school) return res.status(404).json({ status: 'error', message: 'ไม่พบสถานศึกษา' });
+
+  school.status = status || (school.status === 'active' ? 'inactive' : 'active');
+  if (school.id === schoolInfo.id) {
+    schoolInfo.status = school.status;
+  }
+
+  res.json({ 
+    status: 'success', 
+    message: `เปลี่ยนสถานะโรงเรียน "${school.name}" เป็น ${school.status === 'active' ? 'เปิดใช้งาน (Active)' : 'ระงับการใช้งาน'} สำเร็จ`, 
+    school 
+  });
+});
+
+app.post('/api/superadmin/assign_admin.php', (req, res) => {
+  const { school_id, admin_name, admin_id } = req.body;
+  const school = schools.find(s => s.id === parseInt(school_id));
+  if (!school) return res.status(404).json({ status: 'error', message: 'ไม่พบสถานศึกษา' });
+
+  school.assigned_admin_name = admin_name || school.assigned_admin_name;
+  if (admin_id) school.assigned_admin_id = parseInt(admin_id);
+
+  res.json({ 
+    status: 'success', 
+    message: `แต่งตั้ง "${school.assigned_admin_name}" เป็นผู้ดูแลระบบประจำโรงเรียน ${school.name} เรียบร้อย`,
+    school
+  });
+});
+
+// ==========================================
+// Plan Officer: Student Counts & Subsidies Calculator
+// ==========================================
+
+app.get('/api/plan/get_subsidy_data.php', (req, res) => {
+  const yearId = parseInt(req.query.year_id) || 1;
+  const calc = calculateSubsidies(yearId);
+  res.json({
+    status: 'success',
+    fiscal_year_id: yearId,
+    subsidies: studentSubsidies[yearId] || studentSubsidies[1],
+    calculation: calc
+  });
+});
+
+app.post('/api/plan/save_subsidy_data.php', (req, res) => {
+  const { fiscal_year_id, subsidies } = req.body;
+  const yId = parseInt(fiscal_year_id) || 1;
+
+  if (!studentSubsidies[yId]) {
+    studentSubsidies[yId] = JSON.parse(JSON.stringify(studentSubsidies[1]));
+  }
+
+  if (subsidies) {
+    ['kindergarten', 'primary', 'lower_secondary', 'upper_secondary'].forEach(k => {
+      if (subsidies[k]) {
+        studentSubsidies[yId][k] = {
+          ...studentSubsidies[yId][k],
+          student_count: parseInt(subsidies[k].student_count) || 0,
+          subsidy_rate: parseFloat(subsidies[k].subsidy_rate) || 0,
+          dev_rate: parseFloat(subsidies[k].dev_rate) || 0
+        };
+      }
+    });
+  }
+
+  const calc = calculateSubsidies(yId);
+  res.json({
+    status: 'success',
+    message: 'บันทึกจำนวนนักเรียนและอัตราเงินอุดหนุนรายหัว/กพพ. สำเร็จ',
+    calculation: calc
+  });
+});
+
+// Apply Subsidies to Budget Sources and 100% Department Allocations
+app.post('/api/plan/apply_subsidies_to_budget.php', (req, res) => {
+  const { fiscal_year_id } = req.body;
+  const yId = parseInt(fiscal_year_id) || 1;
+  const calc = calculateSubsidies(yId);
+
+  // 1. Update or create Budget Source: "เงินอุดหนุนรายหัวการจัดการศึกษาขั้นพื้นฐาน"
+  let subsidySrc = budgetSources.find(s => s.fiscal_year_id === yId && s.category === 'subsidy');
+  if (subsidySrc) {
+    subsidySrc.amount = calc.totalSubsidyAmount;
+    subsidySrc.description = `คำนวณจากจำนวนนักเรียน ${calc.totalStudents} คน (อนุบาล, ประถม, ม.ต้น, ม.ปลาย)`;
+  } else {
+    budgetSources.push({
+      id: Math.max(...budgetSources.map(s => s.id), 0) + 1,
+      fiscal_year_id: yId,
+      code: `SRC-${yId}-SUB`,
+      name: 'เงินอุดหนุนรายหัวการจัดการศึกษาขั้นพื้นฐาน',
+      category: 'subsidy',
+      amount: calc.totalSubsidyAmount,
+      description: `คำนวณจากจำนวนนักเรียน ${calc.totalStudents} คน`,
+      received_date: new Date().toISOString().split('T')[0]
+    });
+  }
+
+  // 2. Update or create Budget Source: "เงินกิจกรรมพัฒนาคุณภาพผู้เรียน (กพพ.)"
+  let devSrc = budgetSources.find(s => s.fiscal_year_id === yId && s.category === 'student_dev');
+  if (devSrc) {
+    devSrc.amount = calc.totalDevAmount;
+    devSrc.description = `คำนวณจากกิจกรรมพัฒนาคุณภาพผู้เรียน 4 กิจกรรมหลัก (${calc.totalStudents} คน)`;
+  } else {
+    budgetSources.push({
+      id: Math.max(...budgetSources.map(s => s.id), 0) + 1,
+      fiscal_year_id: yId,
+      code: `SRC-${yId}-DEV`,
+      name: 'เงินกิจกรรมพัฒนาคุณภาพผู้เรียน (กพพ.)',
+      category: 'student_dev',
+      amount: calc.totalDevAmount,
+      description: `คำนวณจากกิจกรรมพัฒนาคุณภาพผู้เรียน 4 กิจกรรมหลัก (${calc.totalStudents} คน)`,
+      received_date: new Date().toISOString().split('T')[0]
+    });
+  }
+
+  // 3. Recalculate total budget received for this fiscal year
+  const yearSources = budgetSources.filter(s => s.fiscal_year_id === yId);
+  const totalBudgetReceived = yearSources.reduce((sum, s) => sum + parseFloat(s.amount), 0);
+
+  // 4. Update Department Allocations (100%) based on totalBudgetReceived
+  const yearAllocations = departmentAllocations.filter(a => a.fiscal_year_id === yId);
+  yearAllocations.forEach(a => {
+    a.allocated_amount = (totalBudgetReceived * (parseFloat(a.percentage) / 100.0));
+  });
+
+  res.json({
+    status: 'success',
+    message: `ส่งยอดเงินอุดหนุนรายหัว (${calc.totalSubsidyAmount.toLocaleString('th-TH')} บ.) และ กพพ. (${calc.totalDevAmount.toLocaleString('th-TH')} บ.) เข้าสู่แหล่งงบประมาณและจัดสรร 100% เรียบร้อย`,
+    calculation: calc,
+    totalBudgetReceived,
+    allocations: yearAllocations
+  });
 });
 
 // ==========================================
@@ -433,6 +1000,7 @@ app.post('/api/login.php', (req, res) => {
 app.get('/api/plan/get_data.php', (req, res) => {
   const selectedYearId = parseInt(req.query.year_id) || (fiscalYears.find(y => y.is_current === 1)?.id || 1);
   const currentFiscalYear = fiscalYears.find(y => y.id === selectedYearId) || fiscalYears[0];
+  const subsidiesCalc = calculateSubsidies(selectedYearId);
   
   // Sources for this fiscal year
   const sources = budgetSources.filter(s => s.fiscal_year_id === selectedYearId);
@@ -492,12 +1060,14 @@ app.get('/api/plan/get_data.php', (req, res) => {
   res.json({
     status: 'success',
     school: schoolInfo,
+    schools: schools,
     fiscalYears: fiscalYears,
     currentFiscalYear: currentFiscalYear,
     budgetSources: sources,
     departmentAllocations: allocations,
     projects: yearProjects,
-    users: users.map(u => ({ id: u.id, name: u.name, position: u.position, role: u.role, department: u.department })),
+    users: users.map(u => ({ id: u.id, name: u.name, position: u.position, role: u.role, department: u.department, id_card: u.id_card })),
+    subsidiesCalculation: subsidiesCalc,
     summary: {
       totalBudgetReceived,
       totalPercentAllocated,
@@ -1171,8 +1741,10 @@ const servePhpAsHtml = (filePath, req, res) => {
       role: activeUser.role,
       department: activeUser.department,
       position: activeUser.position,
-      school_id: 1,
+      school_id: schoolInfo.id,
       school_name: schoolInfo.name,
+      smis_code: schoolInfo.smis_code || '10310001',
+      school_logo: schoolInfo.logo_url || '',
       affiliation: schoolInfo.affiliation,
       director_name: schoolInfo.director_name,
       current_fiscal_year: '2568'
@@ -1184,6 +1756,8 @@ const servePhpAsHtml = (filePath, req, res) => {
     content = content.replace(/<\?=\s*\$username\s*\?>/g, mockSession.name);
     content = content.replace(/<\?=\s*\$role\s*\?>/g, mockSession.role);
     content = content.replace(/<\?=\s*\$school_name\s*\?>/g, mockSession.school_name);
+    content = content.replace(/<\?=\s*\$school_logo\s*\?>/g, mockSession.school_logo);
+    content = content.replace(/<\?=\s*\$smis_code\s*\?>/g, mockSession.smis_code);
     content = content.replace(/<\?=\s*\$affiliation\s*\?>/g, mockSession.affiliation);
     content = content.replace(/<\?=\s*\$current_fiscal_year\s*\?>/g, mockSession.current_fiscal_year);
     content = content.replace(/<\?=\s*mb_substr\(\$username,\s*0,\s*1\)\s*\?>/g, mockSession.name.charAt(0));

@@ -28,9 +28,9 @@
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
             <!-- Brand & Fiscal Year -->
             <div class="flex items-center gap-3">
-                <div class="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center p-1.5 shadow-md shadow-blue-500/20 shrink-0">
-                    <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/87/Garuda_Emb_Thailand.svg/200px-Garuda_Emb_Thailand.svg.png" 
-                         alt="ตราครุฑ" class="w-full h-auto brightness-0 invert">
+                <div class="w-11 h-11 bg-white border border-slate-200 rounded-xl flex items-center justify-center p-1 shadow-xs shrink-0 overflow-hidden">
+                    <img id="headerSchoolLogo" src="<?= $school_logo ?: 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/87/Garuda_Emb_Thailand.svg/200px-Garuda_Emb_Thailand.svg.png' ?>" 
+                         alt="ตราสัญลักษณ์โรงเรียน" class="w-full h-full object-contain">
                 </div>
                 <div>
                     <div class="flex items-center gap-2">
@@ -39,7 +39,9 @@
                             สถานะ: เปิดดำเนินงาน
                         </span>
                     </div>
-                    <p class="text-xs text-slate-500 truncate" id="headerSchoolName">โรงเรียนอนุบาลพัฒนาวิทยา • สพฐ.</p>
+                    <p class="text-xs text-slate-500 truncate" id="headerSchoolName">
+                        <?= $school_name ?> (รหัส SMIS: <span id="headerSmisCode"><?= $smis_code ?></span>) • <?= $affiliation ?>
+                    </p>
                 </div>
             </div>
 
@@ -74,31 +76,39 @@
                     </button>
 
                     <!-- Dropdown for role switching & logout -->
-                    <div id="userDropdown" class="hidden absolute right-0 mt-2 w-64 bg-white rounded-2xl shadow-xl border border-slate-100 py-2 z-50">
+                    <div id="userDropdown" class="hidden absolute right-0 mt-2 w-72 bg-white rounded-2xl shadow-xl border border-slate-100 py-2 z-50">
                         <div class="px-4 py-2 border-b border-slate-100">
-                            <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">สลับบทบาททดสอบ (5 บทบาท)</p>
+                            <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">สลับบทบาททดสอบ (Role Testing)</p>
                         </div>
-                        <button onclick="switchRole('director')" class="w-full px-4 py-2 text-left text-xs font-semibold hover:bg-blue-50 hover:text-blue-700 flex items-center justify-between">
-                            <span>ผู้อำนวยการโรงเรียน</span>
-                            <span class="text-[10px] bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded">Director</span>
+                        <button onclick="switchRole('super_admin')" class="w-full px-4 py-2 text-left text-xs font-semibold hover:bg-indigo-50 hover:text-indigo-700 flex items-center justify-between">
+                            <span class="flex items-center gap-1.5"><i data-lucide="globe-2" class="w-3.5 h-3.5 text-indigo-600"></i> Super Admin เขตพื้นที่ฯ</span>
+                            <span class="text-[10px] bg-indigo-100 text-indigo-800 px-1.5 py-0.5 rounded font-mono">SMIS Admin</span>
                         </button>
-                        <button onclick="switchRole('planofficer')" class="w-full px-4 py-2 text-left text-xs font-semibold hover:bg-emerald-50 hover:text-emerald-700 flex items-center justify-between">
-                            <span>จนท.แผนงานและงบประมาณ</span>
-                            <span class="text-[10px] bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded">Plan Officer</span>
+                        <button onclick="switchRole('school_admin')" class="w-full px-4 py-2 text-left text-xs font-semibold hover:bg-slate-100 hover:text-slate-900 flex items-center justify-between">
+                            <span class="flex items-center gap-1.5"><i data-lucide="building-2" class="w-3.5 h-3.5 text-slate-600"></i> Admin ดูแลระบบโรงเรียน</span>
+                            <span class="text-[10px] bg-slate-100 text-slate-800 px-1.5 py-0.5 rounded font-mono">School Admin</span>
+                        </button>
+                        <button onclick="switchRole('director')" class="w-full px-4 py-2 text-left text-xs font-semibold hover:bg-blue-50 hover:text-blue-700 flex items-center justify-between">
+                            <span class="flex items-center gap-1.5"><i data-lucide="award" class="w-3.5 h-3.5 text-blue-600"></i> ผู้อำนวยการโรงเรียน</span>
+                            <span class="text-[10px] bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded font-mono">Director</span>
+                        </button>
+                        <button onclick="switchRole('plan_officer')" class="w-full px-4 py-2 text-left text-xs font-semibold hover:bg-emerald-50 hover:text-emerald-700 flex items-center justify-between">
+                            <span class="flex items-center gap-1.5"><i data-lucide="calculator" class="w-3.5 h-3.5 text-emerald-600"></i> จนท.แผนงานและงบประมาณ</span>
+                            <span class="text-[10px] bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded font-mono">Plan Officer</span>
                         </button>
                         <button onclick="switchRole('head_academic')" class="w-full px-4 py-2 text-left text-xs font-semibold hover:bg-purple-50 hover:text-purple-700 flex items-center justify-between">
-                            <span>หัวหน้ากลุ่มบริหารวิชาการ</span>
-                            <span class="text-[10px] bg-purple-100 text-purple-800 px-1.5 py-0.5 rounded">Dept Head</span>
+                            <span class="flex items-center gap-1.5"><i data-lucide="layers" class="w-3.5 h-3.5 text-purple-600"></i> หัวหน้ากลุ่มบริหารวิชาการ</span>
+                            <span class="text-[10px] bg-purple-100 text-purple-800 px-1.5 py-0.5 rounded font-mono">Dept Head</span>
                         </button>
-                        <button onclick="switchRole('teacher_somchai')" class="w-full px-4 py-2 text-left text-xs font-semibold hover:bg-amber-50 hover:text-amber-700 flex items-center justify-between">
-                            <span>ครูผู้รับผิดชอบโครงการ</span>
-                            <span class="text-[10px] bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded">Teacher</span>
-                        </button>
-                        <button onclick="switchRole('admin')" class="w-full px-4 py-2 text-left text-xs font-semibold hover:bg-slate-50 hover:text-slate-900 flex items-center justify-between">
-                            <span>ผู้ดูแลระบบ</span>
-                            <span class="text-[10px] bg-slate-100 text-slate-800 px-1.5 py-0.5 rounded">Admin</span>
+                        <button onclick="switchRole('teacher')" class="w-full px-4 py-2 text-left text-xs font-semibold hover:bg-amber-50 hover:text-amber-700 flex items-center justify-between">
+                            <span class="flex items-center gap-1.5"><i data-lucide="file-plus" class="w-3.5 h-3.5 text-amber-600"></i> ครูผู้รับผิดชอบโครงการ</span>
+                            <span class="text-[10px] bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded font-mono">Teacher</span>
                         </button>
                         <div class="border-t border-slate-100 my-1"></div>
+                        <button onclick="openChangePasswordModal()" class="w-full px-4 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2">
+                            <i data-lucide="key" class="w-3.5 h-3.5 text-amber-600"></i>
+                            เปลี่ยนรหัสผ่าน (Change Password)
+                        </button>
                         <a href="index.php" class="w-full px-4 py-2 text-left text-xs font-semibold text-red-600 hover:bg-red-50 flex items-center gap-2">
                             <i data-lucide="log-out" class="w-3.5 h-3.5"></i>
                             ออกจากระบบ
@@ -127,6 +137,11 @@
                     <button onclick="switchTab('fiscal_budget')" id="tab-fiscal_budget" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 transition text-left">
                         <i data-lucide="calendar" class="w-4 h-4"></i>
                         <span>2. ปีงบ & แหล่งงบประมาณ</span>
+                    </button>
+
+                    <button onclick="switchTab('subsidies')" id="tab-subsidies" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold text-emerald-700 bg-emerald-50/50 hover:bg-emerald-100/70 border border-emerald-100/80 transition text-left">
+                        <i data-lucide="calculator" class="w-4 h-4 text-emerald-600"></i>
+                        <span class="font-bold">2.1 คำนวณงบรายหัว & กพพ.</span>
                     </button>
 
                     <button onclick="switchTab('allocation')" id="tab-allocation" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 transition text-left">
@@ -174,6 +189,16 @@
                     <button onclick="switchTab('users')" id="tab-users" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 transition text-left">
                         <i data-lucide="users" class="w-4 h-4"></i>
                         <span>11. ผู้ใช้งาน & กำหนดสิทธิ์</span>
+                    </button>
+
+                    <button onclick="switchTab('school_settings')" id="tab-school_settings" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold text-blue-700 bg-blue-50/40 hover:bg-blue-100/70 border border-blue-100/80 transition text-left">
+                        <i data-lucide="building-2" class="w-4 h-4 text-blue-600"></i>
+                        <span class="font-bold">12. ตั้งค่าโรงเรียน & โลโก้</span>
+                    </button>
+
+                    <button onclick="switchTab('superadmin')" id="tab-superadmin" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold text-indigo-700 bg-indigo-50/40 hover:bg-indigo-100/70 border border-indigo-100/80 transition text-left">
+                        <i data-lucide="globe-2" class="w-4 h-4 text-indigo-600"></i>
+                        <span class="font-bold">13. Super Admin (รหัส SMIS)</span>
                     </button>
                 </nav>
 
@@ -740,6 +765,527 @@
                     </div>
                 </div>
             </div>
+
+            <!-- View 12: Plan Officer Subsidies Calculator (งบอุดหนุนรายหัว & กพพ.) -->
+            <div id="view-subsidies" class="tab-view hidden space-y-6">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div>
+                        <div class="inline-flex items-center gap-2 px-3 py-1 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-full text-xs font-bold mb-2">
+                            <i data-lucide="calculator" class="w-3.5 h-3.5 text-emerald-600"></i>
+                            สำหรับเจ้าหน้าที่แผนงานและงบประมาณ
+                        </div>
+                        <h2 class="text-xl font-bold text-slate-900">คำนวณงบประมาณเงินอุดหนุนรายหัวและเงินกิจกรรมพัฒนาผู้เรียน (กพพ.)</h2>
+                        <p class="text-xs text-slate-500 mt-0.5">
+                            กำหนดจำนวนนักเรียนในแต่ละช่วงชั้น เพื่อนำอัตราที่รัฐบาลจัดสรรมาคูณคำนวณยอดเงินงบประมาณ และนำไปตัดงบจัดสรร 100% เข้า 4 กลุ่มงาน
+                        </p>
+                    </div>
+                    <div class="flex gap-2">
+                        <button type="button" onclick="saveSubsidyDataOnly()" class="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition flex items-center gap-1.5 border border-slate-200">
+                            <i data-lucide="save" class="w-4 h-4"></i> บันทึกข้อมูลนักเรียน
+                        </button>
+                        <button type="button" onclick="applySubsidiesToBudget()" class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition shadow-md shadow-emerald-600/20 flex items-center gap-2">
+                            <i data-lucide="arrow-right-circle" class="w-4 h-4"></i> ตัดงบเข้า 4 กลุ่มงาน 100%
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Subsidies Summary KPI Cards -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-bold text-slate-500 uppercase tracking-wider">จำนวนนักเรียนทั้งหมด</span>
+                            <div class="p-2 rounded-xl bg-blue-50 text-blue-600"><i data-lucide="users" class="w-5 h-5"></i></div>
+                        </div>
+                        <p class="text-2xl font-extrabold text-slate-900 mt-2" id="sub-kpi-students">0 คน</p>
+                        <p class="text-xs text-slate-500 mt-1">4 ช่วงชั้น (อนุบาล - ม.ปลาย)</p>
+                    </div>
+
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-bold text-slate-500 uppercase tracking-wider">เงินอุดหนุนรายหัวรวม</span>
+                            <div class="p-2 rounded-xl bg-emerald-50 text-emerald-600"><i data-lucide="wallet" class="w-5 h-5"></i></div>
+                        </div>
+                        <p class="text-2xl font-extrabold text-emerald-600 mt-2" id="sub-kpi-subsidy-total">0.00 ฿</p>
+                        <p class="text-xs text-slate-500 mt-1">การจัดการศึกษาขั้นพื้นฐาน</p>
+                    </div>
+
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-bold text-slate-500 uppercase tracking-wider">เงินกิจกรรมพัฒนาผู้เรียน (กพพ.)</span>
+                            <div class="p-2 rounded-xl bg-purple-50 text-purple-600"><i data-lucide="sparkles" class="w-5 h-5"></i></div>
+                        </div>
+                        <p class="text-2xl font-extrabold text-purple-600 mt-2" id="sub-kpi-dev-total">0.00 ฿</p>
+                        <p class="text-xs text-slate-500 mt-1">4 กิจกรรมพัฒนาคุณภาพผู้เรียน</p>
+                    </div>
+
+                    <div class="bg-gradient-to-br from-blue-900 to-indigo-950 p-5 rounded-2xl text-white shadow-md">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-bold text-blue-200 uppercase tracking-wider">รวมยอดงบประมาณที่ได้</span>
+                            <div class="p-2 rounded-xl bg-white/10 text-white"><i data-lucide="check-check" class="w-5 h-5"></i></div>
+                        </div>
+                        <p class="text-2xl font-extrabold text-white mt-2" id="sub-kpi-grand-total">0.00 ฿</p>
+                        <p class="text-xs text-blue-200 mt-1">พร้อมนำไปจัดสรรร้อยละ 100%</p>
+                    </div>
+                </div>
+
+                <!-- Interactive Rates and Students Count Table -->
+                <div class="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+                    <div class="p-4 border-b border-slate-100 flex items-center justify-between">
+                        <div>
+                            <h3 class="text-sm font-bold text-slate-900">ตารางกำหนดจำนวนนักเรียนและอัตราเงินอุดหนุนต่อหัว (พ.ศ. 2568)</h3>
+                            <p class="text-xs text-slate-500 mt-0.5">แก้ไขจำนวนนักเรียนหรืออัตราตามหนังสือจัดสรร แล้วระบบจะคำนวณยอดเงินให้อัตโนมัติ</p>
+                        </div>
+                        <span class="text-xs font-bold text-slate-500 bg-slate-100 px-3 py-1 rounded-lg">
+                            เกณฑ์อัตรา สพฐ. กระทรวงศึกษาธิการ
+                        </span>
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-xs border-collapse">
+                            <thead class="bg-slate-50 text-slate-700 font-bold border-b border-slate-200">
+                                <tr>
+                                    <th class="p-3 w-40">ระดับช่วงชั้น</th>
+                                    <th class="p-3 w-28 text-center">จำนวนนักเรียน (คน)</th>
+                                    <th class="p-3 w-32 text-right">เงินอุดหนุนรายหัว (บ./คน/ปี)</th>
+                                    <th class="p-3 w-36 text-right">รวมเงินอุดหนุน (บาท)</th>
+                                    <th class="p-3 w-32 text-right">เงิน กพพ. (บ./คน/ปี)</th>
+                                    <th class="p-3 w-36 text-right">รวมเงิน กพพ. (บาท)</th>
+                                    <th class="p-3 w-40 text-right bg-slate-100/60">รวมงบทั้งสิ้น (บาท)</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100">
+                                <!-- Kindergarten -->
+                                <tr class="hover:bg-slate-50/70 transition">
+                                    <td class="p-3 font-bold text-slate-900 flex items-center gap-2">
+                                        <span class="w-2.5 h-2.5 rounded-full bg-pink-500"></span>
+                                        ระดับก่อนประถม (อนุบาล)
+                                    </td>
+                                    <td class="p-3 text-center">
+                                        <input type="number" id="sub_count_kindergarten" value="120" min="0" oninput="recalcSubsidiesLocal()" 
+                                               class="w-20 text-center font-bold px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs outline-none focus:bg-white focus:border-blue-500">
+                                    </td>
+                                    <td class="p-3 text-right">
+                                        <input type="number" id="sub_rate_kindergarten" value="1800" min="0" step="10" oninput="recalcSubsidiesLocal()" 
+                                               class="w-24 text-right font-medium px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs outline-none focus:bg-white focus:border-blue-500">
+                                    </td>
+                                    <td class="p-3 text-right font-bold text-emerald-700" id="sub_total_subsidy_kindergarten">216,000.00</td>
+                                    <td class="p-3 text-right">
+                                        <input type="number" id="sub_dev_rate_kindergarten" value="430" min="0" step="10" oninput="recalcSubsidiesLocal()" 
+                                               class="w-24 text-right font-medium px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs outline-none focus:bg-white focus:border-blue-500">
+                                    </td>
+                                    <td class="p-3 text-right font-bold text-purple-700" id="sub_total_dev_kindergarten">51,600.00</td>
+                                    <td class="p-3 text-right font-black text-slate-900 bg-slate-50/50" id="sub_grand_kindergarten">267,600.00</td>
+                                </tr>
+
+                                <!-- Primary -->
+                                <tr class="hover:bg-slate-50/70 transition">
+                                    <td class="p-3 font-bold text-slate-900 flex items-center gap-2">
+                                        <span class="w-2.5 h-2.5 rounded-full bg-blue-500"></span>
+                                        ระดับประถมศึกษา (ป.1 - ป.6)
+                                    </td>
+                                    <td class="p-3 text-center">
+                                        <input type="number" id="sub_count_primary" value="380" min="0" oninput="recalcSubsidiesLocal()" 
+                                               class="w-20 text-center font-bold px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs outline-none focus:bg-white focus:border-blue-500">
+                                    </td>
+                                    <td class="p-3 text-right">
+                                        <input type="number" id="sub_rate_primary" value="2000" min="0" step="10" oninput="recalcSubsidiesLocal()" 
+                                               class="w-24 text-right font-medium px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs outline-none focus:bg-white focus:border-blue-500">
+                                    </td>
+                                    <td class="p-3 text-right font-bold text-emerald-700" id="sub_total_subsidy_primary">760,000.00</td>
+                                    <td class="p-3 text-right">
+                                        <input type="number" id="sub_dev_rate_primary" value="490" min="0" step="10" oninput="recalcSubsidiesLocal()" 
+                                               class="w-24 text-right font-medium px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs outline-none focus:bg-white focus:border-blue-500">
+                                    </td>
+                                    <td class="p-3 text-right font-bold text-purple-700" id="sub_total_dev_primary">186,200.00</td>
+                                    <td class="p-3 text-right font-black text-slate-900 bg-slate-50/50" id="sub_grand_primary">946,200.00</td>
+                                </tr>
+
+                                <!-- Lower Secondary -->
+                                <tr class="hover:bg-slate-50/70 transition">
+                                    <td class="p-3 font-bold text-slate-900 flex items-center gap-2">
+                                        <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+                                        ระดับมัธยมศึกษาตอนต้น (ม.1 - ม.3)
+                                    </td>
+                                    <td class="p-3 text-center">
+                                        <input type="number" id="sub_count_lower_secondary" value="220" min="0" oninput="recalcSubsidiesLocal()" 
+                                               class="w-20 text-center font-bold px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs outline-none focus:bg-white focus:border-blue-500">
+                                    </td>
+                                    <td class="p-3 text-right">
+                                        <input type="number" id="sub_rate_lower_secondary" value="3600" min="0" step="10" oninput="recalcSubsidiesLocal()" 
+                                               class="w-24 text-right font-medium px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs outline-none focus:bg-white focus:border-blue-500">
+                                    </td>
+                                    <td class="p-3 text-right font-bold text-emerald-700" id="sub_total_subsidy_lower_secondary">792,000.00</td>
+                                    <td class="p-3 text-right">
+                                        <input type="number" id="sub_dev_rate_lower_secondary" value="880" min="0" step="10" oninput="recalcSubsidiesLocal()" 
+                                               class="w-24 text-right font-medium px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs outline-none focus:bg-white focus:border-blue-500">
+                                    </td>
+                                    <td class="p-3 text-right font-bold text-purple-700" id="sub_total_dev_lower_secondary">193,600.00</td>
+                                    <td class="p-3 text-right font-black text-slate-900 bg-slate-50/50" id="sub_grand_lower_secondary">985,600.00</td>
+                                </tr>
+
+                                <!-- Upper Secondary -->
+                                <tr class="hover:bg-slate-50/70 transition">
+                                    <td class="p-3 font-bold text-slate-900 flex items-center gap-2">
+                                        <span class="w-2.5 h-2.5 rounded-full bg-indigo-500"></span>
+                                        ระดับมัธยมศึกษาตอนปลาย (ม.4 - ม.6)
+                                    </td>
+                                    <td class="p-3 text-center">
+                                        <input type="number" id="sub_count_upper_secondary" value="130" min="0" oninput="recalcSubsidiesLocal()" 
+                                               class="w-20 text-center font-bold px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs outline-none focus:bg-white focus:border-blue-500">
+                                    </td>
+                                    <td class="p-3 text-right">
+                                        <input type="number" id="sub_rate_upper_secondary" value="3900" min="0" step="10" oninput="recalcSubsidiesLocal()" 
+                                               class="w-24 text-right font-medium px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs outline-none focus:bg-white focus:border-blue-500">
+                                    </td>
+                                    <td class="p-3 text-right font-bold text-emerald-700" id="sub_total_subsidy_upper_secondary">507,000.00</td>
+                                    <td class="p-3 text-right">
+                                        <input type="number" id="sub_dev_rate_upper_secondary" value="950" min="0" step="10" oninput="recalcSubsidiesLocal()" 
+                                               class="w-24 text-right font-medium px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs outline-none focus:bg-white focus:border-blue-500">
+                                    </td>
+                                    <td class="p-3 text-right font-bold text-purple-700" id="sub_total_dev_upper_secondary">123,500.00</td>
+                                    <td class="p-3 text-right font-black text-slate-900 bg-slate-50/50" id="sub_grand_upper_secondary">630,500.00</td>
+                                </tr>
+                            </tbody>
+                            <tfoot class="bg-slate-100 font-extrabold text-slate-900 border-t-2 border-slate-200">
+                                <tr>
+                                    <td class="p-3">รวมทั้งสิ้น (4 ช่วงชั้น)</td>
+                                    <td class="p-3 text-center text-blue-700 text-sm" id="sub_foot_count">850 คน</td>
+                                    <td class="p-3 text-right text-slate-400">-</td>
+                                    <td class="p-3 text-right text-emerald-800 text-sm" id="sub_foot_subsidy">2,275,000.00</td>
+                                    <td class="p-3 text-right text-slate-400">-</td>
+                                    <td class="p-3 text-right text-purple-800 text-sm" id="sub_foot_dev">554,900.00</td>
+                                    <td class="p-3 text-right text-blue-950 text-base bg-blue-100/50" id="sub_foot_grand">2,829,900.00</td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Explanation & 4 Activities Box -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
+                        <div class="flex items-center gap-2 mb-2 font-bold text-slate-900 text-xs">
+                            <i data-lucide="info" class="w-4 h-4 text-blue-600"></i>
+                            <span>รายละเอียดเงินกิจกรรมพัฒนาคุณภาพผู้เรียน (4 กิจกรรมหลัก)</span>
+                        </div>
+                        <ul class="text-xs text-slate-600 space-y-1.5 list-disc list-inside">
+                            <li><b>1. กิจกรรมวิชาการ:</b> กิจกรรมค่ายวิชาการ ทักษะกระบวนการเรียนรู้</li>
+                            <li><b>2. กิจกรรมคุณธรรม/จริยธรรม:</b> ลูกเสือ เนตรนารี ยุวกาชาด ค่ายธรรมะ</li>
+                            <li><b>3. กิจกรรมทัศนศึกษา:</b> แหล่งเรียนรู้นอกห้องเรียนตามระดับชั้น</li>
+                            <li><b>4. กิจกรรมการจัดการเรียนรู้ ICT:</b> คอมพิวเตอร์ เทคโนโลยี และดิจิทัล</li>
+                        </ul>
+                    </div>
+
+                    <div class="bg-emerald-50/70 p-5 rounded-2xl border border-emerald-100 shadow-xs">
+                        <div class="flex items-center gap-2 mb-2 font-bold text-emerald-900 text-xs">
+                            <i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-600"></i>
+                            <span>การเชื่อมโยงระบบจัดสรร 100% อัตโนมัติ</span>
+                        </div>
+                        <p class="text-xs text-emerald-800 leading-relaxed">
+                            เมื่อกดปุ่ม <b>"ตัดงบเข้า 4 กลุ่มงาน 100%"</b> ระบบจะนำยอดเงินอุดหนุนรายหัวและเงิน กพพ. ที่คำนวณได้ 
+                            ไปตั้งเป็นยอดเงินที่ได้รับในแหล่งงบประมาณ พร้อมคำนวณยอดจัดสรรร้อยละ 100 ให้กลุ่มวิชาการ งบประมาณ บุคคล และทั่วไป ทันที
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- View 13: School Admin Settings & Header Logo Management -->
+            <div id="view-school_settings" class="tab-view hidden space-y-6">
+                <div>
+                    <div class="inline-flex items-center gap-2 px-3 py-1 bg-blue-50 text-blue-800 border border-blue-200 rounded-full text-xs font-bold mb-2">
+                        <i data-lucide="settings" class="w-3.5 h-3.5 text-blue-600"></i>
+                        สำหรับผู้ดูแลระบบประจำโรงเรียน (School Admin)
+                    </div>
+                    <h2 class="text-xl font-bold text-slate-900">ตั้งค่าข้อมูลพื้นฐานสถานศึกษาและตราสัญลักษณ์ (School Profile & Logo)</h2>
+                    <p class="text-xs text-slate-500 mt-0.5">
+                        Admin ของโรงเรียนมีหน้าที่ตั้งค่าชื่อโรงเรียน หน่วยงานสังกัด ที่อยู่โรงเรียน นำโลโก้โรงเรียนมาใส่ 
+                        และเมื่อตั้งค่าเสร็จแล้ว โลโก้และชื่อโรงเรียนจะปรากฏบนส่วนของ Header ทันที
+                    </p>
+                </div>
+
+                <!-- Live Header Preview Card -->
+                <div class="p-4 bg-slate-900 text-white rounded-2xl shadow-md border border-slate-800">
+                    <div class="flex items-center justify-between text-xs text-slate-400 mb-2 font-semibold">
+                        <span>ตัวอย่างการแสดงผลบน Header ระบบจริง (Live Header Preview):</span>
+                        <span class="text-emerald-400 font-bold flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span> อัปเดตสด</span>
+                    </div>
+                    <div class="bg-white/10 backdrop-blur-md p-3 rounded-xl border border-white/10 flex items-center gap-3">
+                        <div class="w-12 h-12 bg-white rounded-xl flex items-center justify-center p-1 shrink-0 overflow-hidden shadow-sm">
+                            <img id="previewHeaderLogo" src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/87/Garuda_Emb_Thailand.svg/200px-Garuda_Emb_Thailand.svg.png" 
+                                 alt="ตราตัวอย่าง" class="w-full h-full object-contain">
+                        </div>
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <span class="font-extrabold text-white text-base leading-tight">ระบบบริหารแผนปฏิบัติการประจำปี</span>
+                                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">เปิดดำเนินงาน</span>
+                            </div>
+                            <p class="text-xs text-blue-200 truncate" id="previewHeaderSchoolText">
+                                โรงเรียนอนุบาลพัฒนาวิทยา (รหัส SMIS: 10310001) • สพป.บุรีรัมย์ เขต 1
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Settings Form -->
+                <form id="schoolSettingsForm" onsubmit="handleSaveSchoolSettings(event)" class="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs space-y-4">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <!-- SMIS Code (Read-Only verified by Super Admin) -->
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">
+                                รหัส SMIS สถานศึกษา 8 หลัก <span class="text-slate-400 font-normal">(เปิดโดย Super Admin)</span>
+                            </label>
+                            <input type="text" id="set_smis_code" readonly 
+                                   class="w-full px-3.5 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-xs font-mono font-bold text-slate-600 outline-none cursor-not-allowed">
+                        </div>
+
+                        <!-- School Name -->
+                        <div class="md:col-span-2">
+                            <label class="block text-xs font-bold text-slate-700 mb-1">ชื่อโรงเรียน / สถานศึกษา <span class="text-red-500">*</span></label>
+                            <input type="text" id="set_school_name" required oninput="updateHeaderPreview()" 
+                                   placeholder="เช่น โรงเรียนอนุบาลพัฒนาวิทยา" 
+                                   class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 outline-none focus:bg-white focus:border-blue-500">
+                        </div>
+                    </div>
+
+                    <!-- Affiliation -->
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">หน่วยงานต้นสังกัด <span class="text-red-500">*</span></label>
+                        <input type="text" id="set_affiliation" required oninput="updateHeaderPreview()" 
+                               placeholder="เช่น สำนักงานเขตพื้นที่การศึกษาประถมศึกษาบุรีรัมย์ เขต 1 สำนักงานคณะกรรมการการศึกษาขั้นพื้นฐาน" 
+                               class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:bg-white focus:border-blue-500">
+                    </div>
+
+                    <!-- Logo Settings -->
+                    <div class="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-3">
+                        <label class="block text-xs font-bold text-slate-800">
+                            ตราสัญลักษณ์โรงเรียน / ตราประจำสถานศึกษา (แสดงบน Header และรูปเล่มแผน) <span class="text-red-500">*</span>
+                        </label>
+                        <div class="flex flex-col sm:flex-row items-center gap-4">
+                            <div class="w-16 h-16 bg-white border border-slate-200 rounded-2xl flex items-center justify-center p-1.5 shrink-0 shadow-xs overflow-hidden">
+                                <img id="set_logo_preview" src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/87/Garuda_Emb_Thailand.svg/200px-Garuda_Emb_Thailand.svg.png" 
+                                     alt="ตัวอย่างโลโก้" class="w-full h-full object-contain">
+                            </div>
+                            <div class="flex-1 w-full space-y-2">
+                                <input type="url" id="set_logo_url" oninput="onLogoUrlInput(this.value)" 
+                                       placeholder="ใส่ URL รูปภาพตราสัญลักษณ์ เช่น https://domain.com/logo.png" 
+                                       class="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-mono text-slate-700 outline-none focus:border-blue-500">
+                                
+                                <!-- Quick Preset Logo Buttons -->
+                                <div class="flex items-center gap-2 flex-wrap">
+                                    <span class="text-[11px] text-slate-500 font-semibold">หรือเลือกตรามาตรฐาน:</span>
+                                    <button type="button" onclick="selectPresetLogo('https://upload.wikimedia.org/wikipedia/commons/thumb/8/87/Garuda_Emb_Thailand.svg/200px-Garuda_Emb_Thailand.svg.png')" 
+                                            class="px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-700 text-[11px] font-bold rounded-lg border border-slate-200 transition">
+                                        ตราครุฑราชการ
+                                    </button>
+                                    <button type="button" onclick="selectPresetLogo('https://upload.wikimedia.org/wikipedia/th/thumb/f/f9/OBEC_Logo.png/200px-OBEC_Logo.png')" 
+                                            class="px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-700 text-[11px] font-bold rounded-lg border border-slate-200 transition">
+                                        ตรา สพฐ.
+                                    </button>
+                                    <button type="button" onclick="selectPresetLogo('https://upload.wikimedia.org/wikipedia/commons/thumb/5/52/Seal_of_the_Ministry_of_Education_of_Thailand.svg/200px-Seal_of_the_Ministry_of_Education_of_Thailand.svg.png')" 
+                                            class="px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-700 text-[11px] font-bold rounded-lg border border-slate-200 transition">
+                                        ตรา เสมาธรรมจักร
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Address Information -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+                        <div class="sm:col-span-2">
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">ที่ตั้ง / ถนน</label>
+                            <input type="text" id="set_address" placeholder="เช่น 123 หมู่ 4 ถนนนิเวศกิจ" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">ตำบล / แขวง</label>
+                            <input type="text" id="set_subdistrict" placeholder="เช่น ในเมือง" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">อำเภอ / เขต</label>
+                            <input type="text" id="set_district" placeholder="เช่น เมืองบุรีรัมย์" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">จังหวัด</label>
+                            <input type="text" id="set_province" placeholder="เช่น บุรีรัมย์" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">รหัสไปรษณีย์</label>
+                            <input type="text" id="set_postal_code" placeholder="เช่น 31000" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">เบอร์โทรศัพท์</label>
+                            <input type="text" id="set_phone" placeholder="เช่น 044-611234" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">อีเมลโรงเรียน</label>
+                            <input type="email" id="set_email" placeholder="school@obec.mail.go.th" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none">
+                        </div>
+                    </div>
+
+                    <!-- Officials / Signers -->
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">ชื่อผู้อำนวยการสถานศึกษา</label>
+                            <input type="text" id="set_director_name" placeholder="นายธีระพล เกียรติวิทยา" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">ตำแหน่งผู้อำนวยการ</label>
+                            <input type="text" id="set_director_position" placeholder="ผู้อำนวยการโรงเรียนอนุบาลพัฒนาวิทยา" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">เจ้าหน้าที่แผนงานและงบประมาณ</label>
+                            <input type="text" id="set_plan_officer_name" placeholder="นางวิไลพร งบมั่นคง" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none">
+                        </div>
+                    </div>
+
+                    <div class="pt-4 border-t border-slate-100 flex justify-end">
+                        <button type="submit" id="btnSaveSchoolSettings" class="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-md shadow-blue-500/20 transition flex items-center gap-2">
+                            <i data-lucide="check" class="w-4 h-4"></i> บันทึกข้อมูลและนำตราสัญลักษณ์ขึ้น Header ทันที
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- View 14: Super Admin Control Center (SMIS 8-Digit School Activation) -->
+            <div id="view-superadmin" class="tab-view hidden space-y-6">
+                <div>
+                    <div class="inline-flex items-center gap-2 px-3 py-1 bg-indigo-50 text-indigo-800 border border-indigo-200 rounded-full text-xs font-bold mb-2">
+                        <i data-lucide="globe-2" class="w-3.5 h-3.5 text-indigo-600"></i>
+                        สำหรับ Super Admin เขตพื้นที่การศึกษา
+                    </div>
+                    <h2 class="text-xl font-bold text-slate-900">ศูนย์ควบคุม Super Admin (เปิดใช้งานสถานศึกษา SMIS 8 หลัก)</h2>
+                    <p class="text-xs text-slate-500 mt-0.5">
+                        Super Admin มีหน้าที่ในการเปิดใช้งานของโรงเรียน และกำหนด Admin ดูแลระบบของแต่ละโรงเรียน โดยใช้หมายเลข SMIS 8 หลักของโรงเรียน
+                    </p>
+                </div>
+
+                <!-- Super Admin Stats -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-bold text-slate-500 uppercase tracking-wider">สถานศึกษาทั้งหมด</span>
+                            <div class="p-2 rounded-xl bg-indigo-50 text-indigo-600"><i data-lucide="school" class="w-5 h-5"></i></div>
+                        </div>
+                        <p class="text-2xl font-extrabold text-slate-900 mt-2" id="sa-total-schools">0 แห่ง</p>
+                        <p class="text-xs text-slate-500 mt-1">ในเขตพื้นที่การศึกษา</p>
+                    </div>
+
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-bold text-slate-500 uppercase tracking-wider">เปิดใช้งานแล้ว (Active)</span>
+                            <div class="p-2 rounded-xl bg-emerald-50 text-emerald-600"><i data-lucide="check-circle" class="w-5 h-5"></i></div>
+                        </div>
+                        <p class="text-2xl font-extrabold text-emerald-600 mt-2" id="sa-active-schools">0 แห่ง</p>
+                        <p class="text-xs text-slate-500 mt-1">บุคลากรสามารถลงทะเบียนได้</p>
+                    </div>
+
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-bold text-slate-500 uppercase tracking-wider">รอเปิดใช้งาน (Pending)</span>
+                            <div class="p-2 rounded-xl bg-amber-50 text-amber-600"><i data-lucide="clock" class="w-5 h-5"></i></div>
+                        </div>
+                        <p class="text-2xl font-extrabold text-amber-600 mt-2" id="sa-pending-schools">0 แห่ง</p>
+                        <p class="text-xs text-slate-500 mt-1">รอดำเนินการตรวจสอบ</p>
+                    </div>
+
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-bold text-slate-500 uppercase tracking-wider">บุคลากรในระบบ</span>
+                            <div class="p-2 rounded-xl bg-blue-50 text-blue-600"><i data-lucide="users" class="w-5 h-5"></i></div>
+                        </div>
+                        <p class="text-2xl font-extrabold text-blue-600 mt-2" id="sa-total-users">0 คน</p>
+                        <p class="text-xs text-slate-500 mt-1">ลงทะเบียนด้วยเลข 13 หลัก</p>
+                    </div>
+                </div>
+
+                <!-- Open New School Card -->
+                <div class="bg-white p-6 rounded-2xl border border-indigo-100 shadow-xs bg-gradient-to-br from-white to-indigo-50/30">
+                    <div class="flex items-center gap-3 mb-4">
+                        <div class="p-2.5 bg-indigo-600 text-white rounded-xl shadow-xs">
+                            <i data-lucide="plus-circle" class="w-5 h-5"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-base font-bold text-slate-900">เปิดใช้งานสถานศึกษาใหม่และกำหนด Admin โรงเรียน</h3>
+                            <p class="text-xs text-slate-500">ระบุรหัส SMIS 8 หลัก เพื่ออนุญาตให้ครูและบุคลากรของโรงเรียนนั้นลงทะเบียนเข้าใช้งานได้</p>
+                        </div>
+                    </div>
+
+                    <form id="newSchoolForm" onsubmit="handleSuperAdminAddSchool(event)" class="space-y-4">
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 mb-1">
+                                    รหัส SMIS 8 หลัก <span class="text-red-500">*</span>
+                                </label>
+                                <input type="text" id="sa_new_smis" maxlength="8" required 
+                                       oninput="this.value = this.value.replace(/[^0-9]/g, '')"
+                                       placeholder="เช่น 10310002" 
+                                       class="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-mono font-bold outline-none focus:border-indigo-500">
+                            </div>
+                            <div class="sm:col-span-2">
+                                <label class="block text-xs font-bold text-slate-700 mb-1">
+                                    ชื่อสถานศึกษา <span class="text-red-500">*</span>
+                                </label>
+                                <input type="text" id="sa_new_name" required 
+                                       placeholder="เช่น โรงเรียนมัธยมวิทยาคมบุรีรัมย์" 
+                                       class="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-bold outline-none focus:border-indigo-500">
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-700 mb-1">สังกัดเขตพื้นที่ฯ</label>
+                                <input type="text" id="sa_new_affiliation" value="สพม.บุรีรัมย์" class="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-700 mb-1">จังหวัด</label>
+                                <input type="text" id="sa_new_province" value="บุรีรัมย์" class="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-700 mb-1">กำหนด Admin ดูแลระบบ</label>
+                                <input type="text" id="sa_new_admin" placeholder="เช่น นายสมเกียรติ สถิติพงษ์" class="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs outline-none">
+                            </div>
+                        </div>
+
+                        <div class="flex items-center justify-between pt-2">
+                            <div class="flex items-center gap-2">
+                                <input type="checkbox" id="sa_new_active" checked class="w-4 h-4 rounded text-indigo-600 cursor-pointer">
+                                <label for="sa_new_active" class="text-xs font-bold text-slate-700 cursor-pointer">เปิดใช้งานทันที (Active Status)</label>
+                            </div>
+                            <button type="submit" class="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl transition shadow-md shadow-indigo-500/20 flex items-center gap-1.5">
+                                <i data-lucide="check" class="w-4 h-4"></i> บันทึกและเปิดใช้งานสถานศึกษา
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Schools Management Table -->
+                <div class="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+                    <div class="p-4 border-b border-slate-100 flex items-center justify-between">
+                        <div>
+                            <h3 class="text-sm font-bold text-slate-900">บัญชีสถานศึกษาในระบบ (SMIS Management)</h3>
+                            <p class="text-xs text-slate-500 mt-0.5">เปิด-ปิดการใช้งาน และตรวจสอบรายชื่อผู้ดูแลระบบของแต่ละโรงเรียน</p>
+                        </div>
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-xs border-collapse">
+                            <thead class="bg-slate-50 text-slate-600 uppercase font-bold border-b border-slate-200">
+                                <tr>
+                                    <th class="p-3.5 w-28">รหัส SMIS (8 หลัก)</th>
+                                    <th class="p-3.5">ชื่อสถานศึกษา</th>
+                                    <th class="p-3.5">หน่วยงานสังกัด</th>
+                                    <th class="p-3.5">Admin โรงเรียนที่กำหนด</th>
+                                    <th class="p-3.5 w-28 text-center">สถานะ</th>
+                                    <th class="p-3.5 w-36 text-center">การจัดการ</th>
+                                </tr>
+                            </thead>
+                            <tbody id="superAdminSchoolsTableBody" class="divide-y divide-slate-100">
+                                <!-- Populated dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
         </main>
     </div>
 
@@ -1284,6 +1830,56 @@
                 <div class="pt-4 border-t border-slate-100 flex justify-end gap-2">
                     <button type="button" onclick="closeUserModal()" class="px-4 py-2 bg-slate-100 text-slate-700 text-xs font-bold rounded-xl">ยกเลิก</button>
                     <button type="submit" class="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl transition">บันทึกผู้ใช้</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal 9: Change Password Modal (First-time login or on-demand) -->
+    <div id="changePasswordModal" class="hidden fixed inset-0 bg-slate-900/70 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 animate-in fade-in zoom-in-95 duration-200">
+            <div class="flex items-center justify-between pb-4 border-b border-slate-100">
+                <div class="flex items-center gap-2.5">
+                    <div class="p-2 bg-amber-100 text-amber-800 rounded-xl">
+                        <i data-lucide="key" class="w-5 h-5"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-base font-bold text-slate-900">เปลี่ยนรหัสผ่านเพื่อความปลอดภัย</h3>
+                        <p class="text-xs text-slate-500">สำหรับผู้ใช้งานครั้งแรกหรือเปลี่ยนรหัสผ่านใหม่</p>
+                    </div>
+                </div>
+                <button type="button" onclick="closeChangePasswordModal()" class="text-slate-400 hover:text-slate-600"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+
+            <div id="mustChangePwdAlert" class="hidden my-3 p-3 bg-amber-50 border border-amber-200 text-amber-900 rounded-xl text-xs flex items-start gap-2">
+                <i data-lucide="alert-triangle" class="w-4 h-4 text-amber-600 shrink-0 mt-0.5"></i>
+                <div>
+                    <b>แจ้งเตือนความปลอดภัย:</b> บัญชีของท่านยังใช้รหัสผ่านเริ่มต้น (1-6) กรุณากำหนดรหัสผ่านใหม่เพื่อความปลอดภัยของข้อมูลสถานศึกษา
+                </div>
+            </div>
+
+            <form id="changePasswordForm" onsubmit="handleChangePasswordSubmit(event)" class="mt-4 space-y-3.5">
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">รหัสผ่านปัจจุบัน</label>
+                    <input type="password" id="chg_old_password" required placeholder="ใส่รหัสผ่านเดิม (เช่น 123456)" 
+                           class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:bg-white focus:border-amber-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">รหัสผ่านใหม่ (อย่างน้อย 6 ตัวอักษร) <span class="text-red-500">*</span></label>
+                    <input type="password" id="chg_new_password" required minlength="6" placeholder="รหัสผ่านใหม่" 
+                           class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:bg-white focus:border-amber-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">ยืนยันรหัสผ่านใหม่ <span class="text-red-500">*</span></label>
+                    <input type="password" id="chg_confirm_password" required minlength="6" placeholder="ยืนยันรหัสผ่านใหม่อีกครั้ง" 
+                           class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:bg-white focus:border-amber-500">
+                </div>
+
+                <div class="pt-4 border-t border-slate-100 flex justify-end gap-2">
+                    <button type="button" onclick="closeChangePasswordModal()" class="px-4 py-2 bg-slate-100 text-slate-700 text-xs font-bold rounded-xl">ยกเลิก</button>
+                    <button type="submit" class="px-5 py-2.5 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold rounded-xl transition shadow-md shadow-amber-500/20 flex items-center gap-1.5">
+                        <i data-lucide="check" class="w-4 h-4"></i> บันทึกรหัสผ่านใหม่
+                    </button>
                 </div>
             </form>
         </div>

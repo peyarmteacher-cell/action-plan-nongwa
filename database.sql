@@ -6,40 +6,73 @@
 SET NAMES utf8mb4;
 SET FOREIGN_KEY_CHECKS = 0;
 
--- 1. ตารางข้อมูลโรงเรียน
+-- 1. ตารางข้อมูลโรงเรียน (รองรับรหัส SMIS 8 หลัก และการเปิดใช้งานโดย Super Admin)
 CREATE TABLE IF NOT EXISTS `schools` (
   `id` INT AUTO_INCREMENT PRIMARY KEY,
-  `code` VARCHAR(10) UNIQUE NOT NULL,
+  `code` VARCHAR(10) UNIQUE NOT NULL, -- รหัสโรงเรียน
+  `smis_code` VARCHAR(8) UNIQUE NOT NULL, -- รหัส SMIS 8 หลัก เช่น 10310001
   `name` VARCHAR(255) NOT NULL,
   `province` VARCHAR(100) NOT NULL,
+  `district` VARCHAR(100) DEFAULT '',
+  `subdistrict` VARCHAR(100) DEFAULT '',
+  `address` TEXT,
+  `postal_code` VARCHAR(10) DEFAULT '',
+  `phone` VARCHAR(30) DEFAULT '',
+  `email` VARCHAR(100) DEFAULT '',
+  `website` VARCHAR(255) DEFAULT '',
   `affiliation` VARCHAR(255) NOT NULL DEFAULT 'สำนักงานเขตพื้นที่การศึกษาประถมศึกษา',
-  `director_name` VARCHAR(255) DEFAULT 'นายสมศักดิ์ พัฒนาวิทย์',
+  `director_name` VARCHAR(255) DEFAULT 'นายธีระพล เกียรติวิทยา',
   `director_position` VARCHAR(255) DEFAULT 'ผู้อำนวยการโรงเรียน',
-  `plan_officer_name` VARCHAR(255) DEFAULT 'นางสาวจิตรา แผนมั่นคง',
+  `plan_officer_name` VARCHAR(255) DEFAULT 'นางวิไลพร งบมั่นคง',
+  `assigned_admin_name` VARCHAR(255) DEFAULT 'ผู้ดูแลระบบโรงเรียน',
+  `assigned_admin_id` INT DEFAULT NULL,
   `logo_url` TEXT,
+  `status` ENUM('active', 'pending', 'inactive') DEFAULT 'active',
   `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 2. ตารางผู้ใช้งานและกำหนดสิทธิ์ 5 บทบาท
--- admin: ผู้ดูแลระบบ
+-- 2. ตารางผู้ใช้งานและกำหนดสิทธิ์
+-- super_admin: ผู้ดูแลระบบส่วนกลาง/เขตพื้นที่ (เปิดใช้งานโรงเรียนด้วยรหัส SMIS 8 หลัก)
+-- school_admin: ผู้ดูแลระบบของโรงเรียน (ตั้งค่าข้อมูลโรงเรียนและโลโก้)
 -- director: ผู้อำนวยการโรงเรียน
--- plan_officer: เจ้าหน้าที่แผนงานและงบประมาณ
--- department_head: หัวหน้ากลุ่มงาน
+-- deputy_director: รองผู้อำนวยการโรงเรียน
+-- plan_officer: เจ้าหน้าที่แผนงานและงบประมาณ (กำหนดจำนวนนักเรียน อัตราอุดหนุน คำนวณตัดงบ)
+-- department_head: หัวหน้ากลุ่มงาน 4 กลุ่ม
 -- teacher: ครู/บุคลากรผู้รับผิดชอบโครงการ
 CREATE TABLE IF NOT EXISTS `users` (
   `id` INT AUTO_INCREMENT PRIMARY KEY,
   `school_id` INT DEFAULT 1,
   `username` VARCHAR(50) UNIQUE NOT NULL,
+  `id_card` VARCHAR(13) DEFAULT '', -- เลขประจำตัวประชาชน 13 หลัก
   `password` VARCHAR(255) NOT NULL,
   `name` VARCHAR(255) NOT NULL,
   `position` VARCHAR(100) DEFAULT 'ครูชำนาญการ',
   `department` ENUM('academic', 'budget', 'personnel', 'general', 'central') DEFAULT 'academic',
-  `role` ENUM('admin', 'director', 'plan_officer', 'department_head', 'teacher') DEFAULT 'teacher',
+  `role` ENUM('super_admin', 'school_admin', 'director', 'deputy_director', 'plan_officer', 'department_head', 'teacher') DEFAULT 'teacher',
   `phone` VARCHAR(30) DEFAULT '',
   `email` VARCHAR(100) DEFAULT '',
+  `must_change_password` TINYINT(1) DEFAULT 1, -- ต้องเปลี่ยนรหัสผ่านเมื่อเข้าใช้งานครั้งแรก (จาก 123456)
   `is_approved` TINYINT(1) DEFAULT 1,
   `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (`school_id`) REFERENCES `schools`(`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 2.1 ตารางกำหนดจำนวนนักเรียนและอัตราเงินอุดหนุนรายหัว/กพพ. แต่ละช่วงชั้น
+CREATE TABLE IF NOT EXISTS `student_subsidies` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `school_id` INT NOT NULL DEFAULT 1,
+  `fiscal_year_id` INT NOT NULL DEFAULT 1,
+  `level_key` ENUM('kindergarten', 'primary', 'lower_secondary', 'upper_secondary') NOT NULL,
+  `level_name` VARCHAR(100) NOT NULL, -- เช่น ก่อนประถมศึกษา (อนุบาล), ประถมศึกษา, มัธยมศึกษาตอนต้น, มัธยมศึกษาตอนปลาย
+  `student_count` INT NOT NULL DEFAULT 0,
+  `subsidy_rate` DECIMAL(10,2) NOT NULL DEFAULT 0.00, -- อัตราเงินอุดหนุนรายหัว (บาท/คน/ปี)
+  `dev_rate` DECIMAL(10,2) NOT NULL DEFAULT 0.00, -- อัตราเงินกิจกรรมพัฒนาคุณภาพผู้เรียน กพพ. (บาท/คน/ปี)
+  `total_subsidy_amount` DECIMAL(14,2) GENERATED ALWAYS AS (`student_count` * `subsidy_rate`) STORED,
+  `total_dev_amount` DECIMAL(14,2) GENERATED ALWAYS AS (`student_count` * `dev_rate`) STORED,
+  `total_amount` DECIMAL(14,2) GENERATED ALWAYS AS ((`student_count` * `subsidy_rate`) + (`student_count` * `dev_rate`)) STORED,
+  `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (`school_id`) REFERENCES `schools`(`id`) ON DELETE CASCADE,
+  FOREIGN KEY (`fiscal_year_id`) REFERENCES `fiscal_years`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 3. ตารางปีงบประมาณ

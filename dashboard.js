@@ -22,14 +22,17 @@ const DEPT_NAMES = {
 };
 
 const ROLE_TITLES = {
+    super_admin: 'Super Admin เขตพื้นที่ฯ',
+    school_admin: 'Admin ดูแลระบบโรงเรียน',
     director: 'ผู้อำนวยการโรงเรียน',
+    deputy_director: 'รองผู้อำนวยการโรงเรียน',
     plan_officer: 'เจ้าหน้าที่แผนงาน/งบประมาณ',
     planofficer: 'เจ้าหน้าที่แผนงาน/งบประมาณ',
     department_head: 'หัวหน้ากลุ่มงาน',
     head_academic: 'หัวหน้ากลุ่มบริหารวิชาการ',
     teacher: 'ครู/ผู้รับผิดชอบโครงการ',
     teacher_somchai: 'ครู/ผู้รับผิดชอบโครงการ',
-    admin: 'ผู้ดูแลระบบ'
+    admin: 'Admin ดูแลระบบโรงเรียน'
 };
 
 const CATEGORY_NAMES = {
@@ -61,6 +64,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     updateUserUI();
     await loadData(selectedYearId);
 
+    // Check if user must change password (e.g. initial login with 1-6)
+    if (currentUser && (currentUser.must_change_password === 1 || currentUser.password === '123456')) {
+        setTimeout(() => {
+            openChangePasswordModal(true);
+        }, 600);
+    }
+
     // Close dropdowns on outside click
     document.addEventListener('click', (e) => {
         const btn = document.getElementById('userMenuBtn');
@@ -84,16 +94,18 @@ function switchRole(roleKey) {
 }
 
 function setRoleUser(roleKey) {
-    if (roleKey === 'director') {
-        currentUser = { id: 1, username: 'director', name: 'นายธีระพล เกียรติวิทยา', role: 'director', position: 'ผู้อำนวยการโรงเรียน', department: 'central' };
+    if (roleKey === 'super_admin') {
+        currentUser = { id: 99, username: 'superadmin', name: 'นายธนาธิป สุวรรณเวช', role: 'super_admin', position: 'ผอ.กลุ่มนโยบายและแผน สพฐ.', department: 'central', school_id: 1 };
+    } else if (roleKey === 'school_admin' || roleKey === 'admin') {
+        currentUser = { id: 2, username: 'schooladmin', name: 'นายสมเกียรติ สถิติพงษ์', role: 'school_admin', position: 'ผู้ดูแลระบบและสารสนเทศโรงเรียน', department: 'central', school_id: 1 };
+    } else if (roleKey === 'director') {
+        currentUser = { id: 1, username: 'director', name: 'นายธีระพล เกียรติวิทยา', role: 'director', position: 'ผู้อำนวยการโรงเรียน', department: 'central', school_id: 1 };
     } else if (roleKey === 'planofficer' || roleKey === 'plan_officer') {
-        currentUser = { id: 3, username: 'planofficer', name: 'นางวิไลพร งบมั่นคง', role: 'plan_officer', position: 'เจ้าหน้าที่แผนงานและงบประมาณ', department: 'budget' };
+        currentUser = { id: 3, username: 'planofficer', name: 'นางวิไลพร งบมั่นคง', role: 'plan_officer', position: 'เจ้าหน้าที่แผนงานและงบประมาณ', department: 'budget', school_id: 1 };
     } else if (roleKey === 'head_academic') {
-        currentUser = { id: 4, username: 'head_academic', name: 'นางกัญญา วิชาการดี', role: 'department_head', position: 'หัวหน้ากลุ่มบริหารวิชาการ', department: 'academic' };
+        currentUser = { id: 4, username: 'head_academic', name: 'นางกัญญา วิชาการดี', role: 'department_head', position: 'หัวหน้ากลุ่มบริหารวิชาการ', department: 'academic', school_id: 1 };
     } else if (roleKey === 'teacher_somchai' || roleKey === 'teacher') {
-        currentUser = { id: 8, username: 'teacher_somchai', name: 'นายสมชาย สอนสนุก', role: 'teacher', position: 'ครู ค.ศ.2', department: 'academic' };
-    } else if (roleKey === 'admin') {
-        currentUser = { id: 2, username: 'admin', name: 'ผู้ดูแลระบบส่วนกลาง', role: 'admin', position: 'นักจัดการงานทั่วไป', department: 'central' };
+        currentUser = { id: 8, username: 'teacher_somchai', name: 'นายสมชาย สอนสนุก', role: 'teacher', position: 'ครู ค.ศ.2', department: 'academic', school_id: 1 };
     }
     localStorage.setItem('currentUser', JSON.stringify(currentUser));
 }
@@ -157,9 +169,15 @@ function switchTab(tabId) {
     if (targetView) targetView.classList.remove('hidden');
     if (targetTab) targetTab.classList.add('sidebar-item-active');
 
-    // Trigger charts redraw if overview
+    // Trigger tab-specific loaders
     if (tabId === 'overview') {
         renderCharts();
+    } else if (tabId === 'subsidies') {
+        loadSubsidyData();
+    } else if (tabId === 'school_settings') {
+        loadSchoolSettings();
+    } else if (tabId === 'superadmin') {
+        loadSuperAdminSchools();
     }
     lucide.createIcons();
 }
@@ -169,7 +187,16 @@ function renderAllViews() {
     if (!appData) return;
 
     // Header & Info
-    document.getElementById('headerSchoolName').innerText = `${appData.school.name} • ${appData.school.affiliation}`;
+    if (appData.school) {
+        const headerLogo = document.getElementById('headerSchoolLogo');
+        const headerName = document.getElementById('headerSchoolName');
+        const headerSmis = document.getElementById('headerSmisCode');
+        if (headerLogo && appData.school.logo_url) headerLogo.src = appData.school.logo_url;
+        if (headerSmis && appData.school.smis_code) headerSmis.innerText = appData.school.smis_code;
+        if (headerName) {
+            headerName.innerHTML = `${appData.school.name} (รหัส SMIS: <span id="headerSmisCode">${appData.school.smis_code || '10310001'}</span>) • ${appData.school.affiliation}`;
+        }
+    }
     document.getElementById('fyDetailYear').innerText = `พ.ศ. ${appData.currentFiscalYear.year}`;
     document.getElementById('fyDetailDates').innerText = `${appData.currentFiscalYear.start_date} - ${appData.currentFiscalYear.end_date}`;
     document.getElementById('fyCurrentBadge').innerText = appData.currentFiscalYear.is_current ? 'ปีงบประมาณปัจจุบัน' : 'ปีงบประมาณย้อนหลัง';
@@ -1564,3 +1591,496 @@ async function handleUserSubmit(e) {
         console.error(err);
     }
 }
+
+// ==========================================
+// 12. SUBSIDIES CALCULATOR (เจ้าหน้าที่แผนงาน)
+// ==========================================
+async function loadSubsidyData() {
+    try {
+        const res = await fetch(`/api/plan/get_subsidy_data.php?fiscal_year_id=${selectedYearId}`);
+        const result = await res.json();
+        if (result.status === 'success') {
+            const data = result.subsidies || result.data || {};
+            // Populate kindergarten
+            if (data.kindergarten) {
+                document.getElementById('sub_count_kindergarten').value = data.kindergarten.student_count || 0;
+                document.getElementById('sub_rate_kindergarten').value = data.kindergarten.subsidy_rate || 0;
+                document.getElementById('sub_dev_rate_kindergarten').value = data.kindergarten.dev_rate ?? data.kindergarten.student_dev_rate ?? 0;
+            }
+            // Populate primary
+            if (data.primary) {
+                document.getElementById('sub_count_primary').value = data.primary.student_count || 0;
+                document.getElementById('sub_rate_primary').value = data.primary.subsidy_rate || 0;
+                document.getElementById('sub_dev_rate_primary').value = data.primary.dev_rate ?? data.primary.student_dev_rate ?? 0;
+            }
+            // Populate lower_secondary
+            if (data.lower_secondary) {
+                document.getElementById('sub_count_lower_secondary').value = data.lower_secondary.student_count || 0;
+                document.getElementById('sub_rate_lower_secondary').value = data.lower_secondary.subsidy_rate || 0;
+                document.getElementById('sub_dev_rate_lower_secondary').value = data.lower_secondary.dev_rate ?? data.lower_secondary.student_dev_rate ?? 0;
+            }
+            // Populate upper_secondary
+            if (data.upper_secondary) {
+                document.getElementById('sub_count_upper_secondary').value = data.upper_secondary.student_count || 0;
+                document.getElementById('sub_rate_upper_secondary').value = data.upper_secondary.subsidy_rate || 0;
+                document.getElementById('sub_dev_rate_upper_secondary').value = data.upper_secondary.dev_rate ?? data.upper_secondary.student_dev_rate ?? 0;
+            }
+            recalcSubsidiesLocal();
+        }
+    } catch (err) {
+        console.error('Error loading subsidies:', err);
+    }
+}
+
+function recalcSubsidiesLocal() {
+    const levels = ['kindergarten', 'primary', 'lower_secondary', 'upper_secondary'];
+    let totalStudents = 0;
+    let grandSubsidy = 0;
+    let grandDev = 0;
+
+    levels.forEach(lvl => {
+        const count = parseFloat(document.getElementById(`sub_count_${lvl}`).value) || 0;
+        const rate = parseFloat(document.getElementById(`sub_rate_${lvl}`).value) || 0;
+        const devRate = parseFloat(document.getElementById(`sub_dev_rate_${lvl}`).value) || 0;
+
+        const subTotal = count * rate;
+        const devTotal = count * devRate;
+        const rowGrand = subTotal + devTotal;
+
+        const subEl = document.getElementById(`sub_total_subsidy_${lvl}`);
+        const devEl = document.getElementById(`sub_total_dev_${lvl}`);
+        const grandEl = document.getElementById(`sub_grand_${lvl}`);
+
+        if (subEl) subEl.innerText = formatBaht(subTotal);
+        if (devEl) devEl.innerText = formatBaht(devTotal);
+        if (grandEl) grandEl.innerText = formatBaht(rowGrand);
+
+        totalStudents += count;
+        grandSubsidy += subTotal;
+        grandDev += devTotal;
+    });
+
+    const netTotal = grandSubsidy + grandDev;
+
+    // Update KPI Summary Cards
+    const kpiStudents = document.getElementById('sub-kpi-students');
+    const kpiSubsidy = document.getElementById('sub-kpi-subsidy-total');
+    const kpiDev = document.getElementById('sub-kpi-dev-total');
+    const kpiGrand = document.getElementById('sub-kpi-grand-total');
+
+    if (kpiStudents) kpiStudents.innerText = `${totalStudents.toLocaleString('th-TH')} คน`;
+    if (kpiSubsidy) kpiSubsidy.innerText = `${formatBaht(grandSubsidy)} ฿`;
+    if (kpiDev) kpiDev.innerText = `${formatBaht(grandDev)} ฿`;
+    if (kpiGrand) kpiGrand.innerText = `${formatBaht(netTotal)} ฿`;
+
+    // Update Footers
+    const footCount = document.getElementById('sub_foot_count');
+    const footSubsidy = document.getElementById('sub_foot_subsidy');
+    const footDev = document.getElementById('sub_foot_dev');
+    const footGrand = document.getElementById('sub_foot_grand');
+
+    if (footCount) footCount.innerText = `${totalStudents.toLocaleString('th-TH')} คน`;
+    if (footSubsidy) footSubsidy.innerText = formatBaht(grandSubsidy);
+    if (footDev) footDev.innerText = formatBaht(grandDev);
+    if (footGrand) footGrand.innerText = formatBaht(netTotal);
+}
+
+function getSubsidyPayload() {
+    const levels = ['kindergarten', 'primary', 'lower_secondary', 'upper_secondary'];
+    const rates = {};
+    levels.forEach(lvl => {
+        rates[lvl] = {
+            student_count: parseFloat(document.getElementById(`sub_count_${lvl}`).value) || 0,
+            subsidy_rate: parseFloat(document.getElementById(`sub_rate_${lvl}`).value) || 0,
+            student_dev_rate: parseFloat(document.getElementById(`sub_dev_rate_${lvl}`).value) || 0
+        };
+    });
+    return {
+        fiscal_year_id: selectedYearId,
+        rates: rates
+    };
+}
+
+async function saveSubsidyDataOnly() {
+    try {
+        const payload = getSubsidyPayload();
+        const res = await fetch('/api/plan/save_subsidy_data.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const result = await res.json();
+        if (result.status === 'success') {
+            showToast('บันทึกข้อมูลจำนวนนักเรียนและอัตราเงินอุดหนุนสำเร็จ', 'success');
+        } else {
+            showToast(result.message || 'บันทึกไม่สำเร็จ', 'error');
+        }
+    } catch (err) {
+        console.error(err);
+        showToast('เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์', 'error');
+    }
+}
+
+async function applySubsidiesToBudget() {
+    try {
+        // Save first
+        await saveSubsidyDataOnly();
+
+        const res = await fetch('/api/plan/apply_subsidies_to_budget.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ fiscal_year_id: selectedYearId })
+        });
+        const result = await res.json();
+        if (result.status === 'success') {
+            showToast('คำนวณและตัดงบประมาณเข้า 4 กลุ่มงาน (100%) เรียบร้อยแล้ว', 'success');
+            await loadData(selectedYearId);
+            switchTab('allocation');
+        } else {
+            showToast(result.message || 'ไม่สามารถตัดงบได้', 'error');
+        }
+    } catch (err) {
+        console.error(err);
+        showToast('เกิดข้อผิดพลาดในการประมวลผล', 'error');
+    }
+}
+
+// ==========================================
+// 13. SCHOOL SETTINGS & HEADER LOGO (Admin โรงเรียน)
+// ==========================================
+async function loadSchoolSettings() {
+    try {
+        const res = await fetch('/api/admin/get_school_info.php');
+        const result = await res.json();
+        const school = (result.status === 'success' && result.data) ? result.data : (appData ? appData.school : null);
+        
+        if (school) {
+            document.getElementById('set_smis_code').value = school.smis_code || '10310001';
+            document.getElementById('set_school_name').value = school.name || '';
+            document.getElementById('set_affiliation').value = school.affiliation || '';
+            document.getElementById('set_logo_url').value = school.logo_url || '';
+            document.getElementById('set_logo_preview').src = school.logo_url || 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/87/Garuda_Emb_Thailand.svg/200px-Garuda_Emb_Thailand.svg.png';
+            document.getElementById('set_address').value = school.address || '';
+            document.getElementById('set_subdistrict').value = school.subdistrict || '';
+            document.getElementById('set_district').value = school.district || '';
+            document.getElementById('set_province').value = school.province || '';
+            document.getElementById('set_postal_code').value = school.postal_code || '';
+            document.getElementById('set_phone').value = school.phone || '';
+            document.getElementById('set_email').value = school.email || '';
+            document.getElementById('set_director_name').value = school.director_name || '';
+            document.getElementById('set_director_position').value = school.director_position || '';
+            document.getElementById('set_plan_officer_name').value = school.plan_officer_name || '';
+
+            updateHeaderPreview();
+        }
+    } catch (err) {
+        console.error('Error loading school settings:', err);
+    }
+}
+
+function updateHeaderPreview() {
+    const name = document.getElementById('set_school_name').value || 'ชื่อโรงเรียน';
+    const smis = document.getElementById('set_smis_code').value || '10310001';
+    const aff = document.getElementById('set_affiliation').value || 'สังกัดเขตพื้นที่ฯ';
+    const logoUrl = document.getElementById('set_logo_url').value || 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/87/Garuda_Emb_Thailand.svg/200px-Garuda_Emb_Thailand.svg.png';
+
+    const prevLogo = document.getElementById('previewHeaderLogo');
+    const prevText = document.getElementById('previewHeaderSchoolText');
+
+    if (prevLogo) prevLogo.src = logoUrl;
+    if (prevText) prevText.innerText = `${name} (รหัส SMIS: ${smis}) • ${aff}`;
+}
+
+function onLogoUrlInput(url) {
+    const preview = document.getElementById('set_logo_preview');
+    if (preview && url) {
+        preview.src = url;
+    }
+    updateHeaderPreview();
+}
+
+function selectPresetLogo(url) {
+    document.getElementById('set_logo_url').value = url;
+    document.getElementById('set_logo_preview').src = url;
+    updateHeaderPreview();
+}
+
+async function handleSaveSchoolSettings(e) {
+    e.preventDefault();
+    const btn = document.getElementById('btnSaveSchoolSettings');
+    const originalText = btn.innerHTML;
+    btn.innerHTML = `<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> กำลังบันทึก...`;
+    lucide.createIcons();
+
+    const payload = {
+        name: document.getElementById('set_school_name').value.trim(),
+        affiliation: document.getElementById('set_affiliation').value.trim(),
+        logo_url: document.getElementById('set_logo_url').value.trim(),
+        address: document.getElementById('set_address').value.trim(),
+        subdistrict: document.getElementById('set_subdistrict').value.trim(),
+        district: document.getElementById('set_district').value.trim(),
+        province: document.getElementById('set_province').value.trim(),
+        postal_code: document.getElementById('set_postal_code').value.trim(),
+        phone: document.getElementById('set_phone').value.trim(),
+        email: document.getElementById('set_email').value.trim(),
+        director_name: document.getElementById('set_director_name').value.trim(),
+        director_position: document.getElementById('set_director_position').value.trim(),
+        plan_officer_name: document.getElementById('set_plan_officer_name').value.trim()
+    };
+
+    try {
+        const res = await fetch('/api/school/save_settings.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const result = await res.json();
+        if (result.status === 'success') {
+            showToast('บันทึกข้อมูลสถานศึกษาและอัปเดต Header เรียบร้อยแล้ว', 'success');
+
+            // Instantly update header branding in real time
+            const headerLogo = document.getElementById('headerSchoolLogo');
+            const headerName = document.getElementById('headerSchoolName');
+            const smis = document.getElementById('set_smis_code').value;
+
+            if (headerLogo && payload.logo_url) headerLogo.src = payload.logo_url;
+            if (headerName) {
+                headerName.innerHTML = `${payload.name} (รหัส SMIS: <span id="headerSmisCode">${smis}</span>) • ${payload.affiliation}`;
+            }
+
+            if (appData && appData.school) {
+                Object.assign(appData.school, payload);
+            }
+        } else {
+            showToast(result.message || 'บันทึกไม่สำเร็จ', 'error');
+        }
+    } catch (err) {
+        console.error(err);
+        showToast('เกิดข้อผิดพลาดในการบันทึกข้อมูล', 'error');
+    } finally {
+        btn.innerHTML = originalText;
+        lucide.createIcons();
+    }
+}
+
+// ==========================================
+// 14. SUPER ADMIN CONTROL CENTER (รหัส SMIS)
+// ==========================================
+async function loadSuperAdminSchools() {
+    try {
+        const res = await fetch('/api/superadmin/get_schools.php');
+        const result = await res.json();
+        if (result.status === 'success') {
+            const schools = result.data || [];
+            
+            // Update stats
+            const total = schools.length;
+            const active = schools.filter(s => s.is_active === 1).length;
+            const pending = total - active;
+            
+            const saTotal = document.getElementById('sa-total-schools');
+            const saActive = document.getElementById('sa-active-schools');
+            const saPending = document.getElementById('sa-pending-schools');
+            const saUsers = document.getElementById('sa-total-users');
+
+            if (saTotal) saTotal.innerText = `${total} แห่ง`;
+            if (saActive) saActive.innerText = `${active} แห่ง`;
+            if (saPending) saPending.innerText = `${pending} แห่ง`;
+            if (saUsers) saUsers.innerText = `${total * 6} คน`;
+
+            // Populate table
+            const tbody = document.getElementById('superAdminSchoolsTableBody');
+            if (tbody) {
+                if (schools.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-slate-400">ยังไม่มีข้อมูลสถานศึกษา</td></tr>`;
+                    return;
+                }
+                tbody.innerHTML = schools.map(s => `
+                    <tr class="hover:bg-slate-50 transition">
+                        <td class="p-3.5 font-mono font-bold text-blue-900">${s.smis_code}</td>
+                        <td class="p-3.5 font-bold text-slate-900">
+                            <div class="flex items-center gap-2">
+                                <img src="${s.logo_url || 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/87/Garuda_Emb_Thailand.svg/200px-Garuda_Emb_Thailand.svg.png'}" 
+                                     alt="logo" class="w-6 h-6 object-contain rounded">
+                                <span>${s.name}</span>
+                            </div>
+                        </td>
+                        <td class="p-3.5 text-slate-600">${s.affiliation || '-'}</td>
+                        <td class="p-3.5 text-slate-800 font-medium">
+                            <div class="flex items-center gap-1.5">
+                                <i data-lucide="user-check" class="w-3.5 h-3.5 text-slate-400"></i>
+                                <span>${s.admin_name || 'ยังไม่ได้กำหนด'}</span>
+                            </div>
+                        </td>
+                        <td class="p-3.5 text-center">
+                            <span class="px-2.5 py-1 rounded-full text-[10px] font-bold ${
+                                s.is_active === 1 ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+                            }">
+                                ${s.is_active === 1 ? 'เปิดใช้งาน (Active)' : 'ระงับชั่วคราว'}
+                            </span>
+                        </td>
+                        <td class="p-3.5 text-center">
+                            <div class="flex items-center justify-center gap-1.5">
+                                <button onclick="toggleSchoolActive(${s.id}, ${s.is_active === 1 ? 0 : 1})" 
+                                        class="px-2.5 py-1 text-[11px] font-bold rounded-lg border transition ${
+                                            s.is_active === 1 ? 'bg-red-50 text-red-700 border-red-200 hover:bg-red-100' : 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
+                                        }">
+                                    ${s.is_active === 1 ? 'ระงับ' : 'เปิดใช้งาน'}
+                                </button>
+                                <button onclick="assignSchoolAdminPrompt(${s.id}, '${s.admin_name || ''}')" 
+                                        class="px-2.5 py-1 text-[11px] font-bold bg-slate-100 text-slate-700 hover:bg-slate-200 rounded-lg border border-slate-200 transition">
+                                    ตั้ง Admin
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `).join('');
+                lucide.createIcons();
+            }
+        }
+    } catch (err) {
+        console.error('Error loading superadmin schools:', err);
+    }
+}
+
+async function handleSuperAdminAddSchool(e) {
+    e.preventDefault();
+    const smis = document.getElementById('sa_new_smis').value.trim();
+    if (smis.length !== 8) {
+        showToast('รหัส SMIS ต้องเป็นตัวเลข 8 หลักเท่านั้น', 'error');
+        return;
+    }
+
+    const payload = {
+        smis_code: smis,
+        name: document.getElementById('sa_new_name').value.trim(),
+        affiliation: document.getElementById('sa_new_affiliation').value.trim(),
+        province: document.getElementById('sa_new_province').value.trim(),
+        admin_name: document.getElementById('sa_new_admin').value.trim(),
+        is_active: document.getElementById('sa_new_active').checked ? 1 : 0
+    };
+
+    try {
+        const res = await fetch('/api/superadmin/save_school.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const result = await res.json();
+        if (result.status === 'success') {
+            showToast(`เปิดใช้งานสถานศึกษา ${payload.name} (SMIS: ${payload.smis_code}) เรียบร้อยแล้ว`, 'success');
+            document.getElementById('newSchoolForm').reset();
+            document.getElementById('sa_new_active').checked = true;
+            await loadSuperAdminSchools();
+        } else {
+            showToast(result.message || 'บันทึกไม่สำเร็จ', 'error');
+        }
+    } catch (err) {
+        console.error(err);
+        showToast('เกิดข้อผิดพลาดในการเปิดใช้งานสถานศึกษา', 'error');
+    }
+}
+
+async function toggleSchoolActive(schoolId, newStatus) {
+    try {
+        const res = await fetch('/api/superadmin/toggle_status.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ school_id: schoolId, is_active: newStatus })
+        });
+        const result = await res.json();
+        if (result.status === 'success') {
+            showToast(newStatus === 1 ? 'เปิดใช้งานสถานศึกษาสำเร็จ' : 'ระงับสถานศึกษาเรียบร้อยแล้ว', 'success');
+            await loadSuperAdminSchools();
+        }
+    } catch (err) {
+        console.error(err);
+    }
+}
+
+async function assignSchoolAdminPrompt(schoolId, currentAdmin) {
+    const adminName = prompt('ระบุชื่อ-นามสกุล ของ Admin ผู้ดูแลระบบประจำโรงเรียน:', currentAdmin || '');
+    if (adminName === null) return;
+    if (!adminName.trim()) {
+        showToast('กรุณาระบุชื่อ Admin โรงเรียน', 'error');
+        return;
+    }
+
+    try {
+        const res = await fetch('/api/superadmin/assign_admin.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ school_id: schoolId, admin_name: adminName.trim() })
+        });
+        const result = await res.json();
+        if (result.status === 'success') {
+            showToast(`มอบหมาย Admin ${adminName.trim()} ประจำสถานศึกษาเรียบร้อยแล้ว`, 'success');
+            await loadSuperAdminSchools();
+        }
+    } catch (err) {
+        console.error(err);
+    }
+}
+
+// ==========================================
+// 15. PASSWORD CHANGE MODAL & ENFORCEMENT
+// ==========================================
+function openChangePasswordModal(isEnforced = false) {
+    const alertBox = document.getElementById('mustChangePwdAlert');
+    if (alertBox) {
+        if (isEnforced) alertBox.classList.remove('hidden');
+        else alertBox.classList.add('hidden');
+    }
+    const modal = document.getElementById('changePasswordModal');
+    if (modal) modal.classList.remove('hidden');
+}
+
+function closeChangePasswordModal() {
+    const modal = document.getElementById('changePasswordModal');
+    if (modal) modal.classList.add('hidden');
+}
+
+async function handleChangePasswordSubmit(e) {
+    e.preventDefault();
+    const oldPwd = document.getElementById('chg_old_password').value;
+    const newPwd = document.getElementById('chg_new_password').value;
+    const confirmPwd = document.getElementById('chg_confirm_password').value;
+
+    if (newPwd !== confirmPwd) {
+        showToast('รหัสผ่านใหม่และการยืนยันรหัสผ่านไม่ตรงกัน', 'error');
+        return;
+    }
+
+    if (newPwd.length < 6) {
+        showToast('รหัสผ่านต้องมีความยาวอย่างน้อย 6 ตัวอักษร', 'error');
+        return;
+    }
+
+    try {
+        const res = await fetch('/api/auth/change_password.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                user_id: currentUser ? currentUser.id : 1,
+                old_password: oldPwd,
+                new_password: newPwd
+            })
+        });
+        const result = await res.json();
+        if (result.status === 'success') {
+            showToast('เปลี่ยนรหัสผ่านสำเร็จเรียบร้อยแล้ว', 'success');
+            if (currentUser) {
+                currentUser.must_change_password = 0;
+                currentUser.password = newPwd;
+                localStorage.setItem('currentUser', JSON.stringify(currentUser));
+            }
+            closeChangePasswordModal();
+        } else {
+            showToast(result.message || 'เปลี่ยนรหัสผ่านไม่สำเร็จ ตรวจสอบรหัสผ่านเดิม', 'error');
+        }
+    } catch (err) {
+        console.error(err);
+        showToast('เกิดข้อผิดพลาดในการเปลี่ยนรหัสผ่าน', 'error');
+    }
+}
+
