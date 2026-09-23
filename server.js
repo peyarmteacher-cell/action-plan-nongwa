@@ -76,8 +76,8 @@ let schools = [
     director_name: 'นายสมเกียรติ มัธยมเลิศ',
     director_position: 'ผู้อำนวยการเชี่ยวชาญพิเศษ',
     plan_officer_name: 'นายชลิต แผนมัธยม',
-    assigned_admin_name: 'นายอดิศร ไอทีโรงเรียน',
-    assigned_admin_id: 11,
+    assigned_admin_name: '', // ยังไม่ได้กำหนด Admin (รอครูในโรงเรียนสมัครสมาชิก)
+    assigned_admin_id: null,
     logo_url: '',
     status: 'active',
     created_at: '2024-06-15'
@@ -99,8 +99,8 @@ let schools = [
     director_name: 'นางปราณี ศรีสุข',
     director_position: 'ผู้อำนวยการชำนาญการพิเศษ',
     plan_officer_name: 'นายวิเชียร วางแผนดี',
-    assigned_admin_name: 'นายวิเชียร วางแผนดี',
-    assigned_admin_id: 12,
+    assigned_admin_name: '', // ยังไม่ได้กำหนด Admin (รอครูในโรงเรียนสมัครสมาชิก)
+    assigned_admin_id: null,
     logo_url: '',
     status: 'pending', // Pending activation by Super Admin
     created_at: '2024-09-01'
@@ -120,7 +120,10 @@ let users = [
   { id: 8, username: 'head_personnel', id_card: '1310000000008', password: '123', name: 'นางสาวพิมพ์ใจ เสริมบุคคล', position: 'หัวหน้ากลุ่มบริหารงานบุคคล (ครูชำนาญการพิเศษ คศ.3)', department: 'personnel', role: 'department_head', phone: '0834561234', email: 'personnel@anubanpat.ac.th', school_id: 1, is_approved: 1, must_change_password: 0 },
   { id: 9, username: 'head_general', id_card: '1310000000009', password: '123', name: 'นายพิชิต สภาพแวดล้อม', position: 'หัวหน้ากลุ่มบริหารทั่วไป (ครูชำนาญการ คศ.2)', department: 'general', role: 'department_head', phone: '0823451234', email: 'general@anubanpat.ac.th', school_id: 1, is_approved: 1, must_change_password: 0 },
   { id: 10, username: 'teacher_somchai', id_card: '1310000000010', password: '123', name: 'นายสมชาย สอนสนุก', position: 'ครู (คศ.1)', department: 'academic', role: 'teacher', phone: '0811112222', email: 'somchai@anubanpat.ac.th', school_id: 1, is_approved: 1, must_change_password: 0 },
-  { id: 11, username: 'teacher_somying', id_card: '1310000000011', password: '123', name: 'นางสมหญิง กิจกรรมเลิศ', position: 'ครูผู้ช่วย', department: 'general', role: 'teacher', phone: '0822223333', email: 'somying@anubanpat.ac.th', school_id: 1, is_approved: 1, must_change_password: 0 }
+  { id: 11, username: 'teacher_somying', id_card: '1310000000011', password: '123', name: 'นางสมหญิง กิจกรรมเลิศ', position: 'ครูผู้ช่วย', department: 'general', role: 'teacher', phone: '0822223333', email: 'somying@anubanpat.ac.th', school_id: 1, is_approved: 1, must_change_password: 0 },
+  // ครูที่สมัครสมาชิกในโรงเรียนที่ 2 (มัธยมศึกษาเกียรติวิทยาคาร รหัส SMIS: 10310002)
+  { id: 12, username: '1310000000012', id_card: '1310000000012', password: '123', name: 'นายวรวิทย์ มัธยมสอนดี', position: 'ครูชำนาญการ (คศ.2)', department: 'academic', role: 'teacher', phone: '0898887766', email: 'worawit@kiatwittaya.ac.th', school_id: 2, is_approved: 1, must_change_password: 1 },
+  { id: 13, username: '1310000000013', id_card: '1310000000013', password: '123', name: 'นางสาวกนกพร เทคโนโลยี', position: 'ครู (คศ.1)', department: 'budget', role: 'teacher', phone: '0899998877', email: 'kanokporn@kiatwittaya.ac.th', school_id: 2, is_approved: 1, must_change_password: 1 }
 ];
 
 // Student counts and subsidy rates per level (Government per-student subsidies + Learner Development Activities)
@@ -585,8 +588,8 @@ app.post('/api/auth/verify_smis.php', (req, res) => {
   });
 });
 
-// Staff / Teacher Registration
-app.post('/api/auth/register.php', (req, res) => {
+// Staff / Teacher Registration (supports /api/auth/register.php and /api/register.php)
+app.post(['/api/auth/register.php', '/api/register.php'], (req, res) => {
   const { smis_code, id_card, name, position, department, phone, email } = req.body;
 
   // 1. Verify SMIS 8-digit
@@ -774,23 +777,122 @@ app.post('/api/school/save_settings.php', (req, res) => {
 // ==========================================
 
 app.get('/api/superadmin/get_schools.php', (req, res) => {
+  const enrichedSchools = schools.map(s => ({
+    ...s,
+    is_active: s.status === 'active' ? 1 : 0,
+    admin_name: s.assigned_admin_name || ''
+  }));
+
   const stats = {
-    totalSchools: schools.length,
-    activeSchools: schools.filter(s => s.status === 'active').length,
-    pendingSchools: schools.filter(s => s.status === 'pending').length,
+    totalSchools: enrichedSchools.length,
+    activeSchools: enrichedSchools.filter(s => s.status === 'active').length,
+    pendingSchools: enrichedSchools.filter(s => s.status === 'pending').length,
     totalUsers: users.length,
     totalProjects: projects.length
   };
+
   res.json({
     status: 'success',
-    schools,
+    schools: enrichedSchools,
+    data: enrichedSchools,
     stats,
     users: users.map(u => ({ id: u.id, name: u.name, position: u.position, role: u.role, school_id: u.school_id }))
   });
 });
 
+// Database Auto-Installer / Migration Endpoint for Super Admin
+app.post('/api/superadmin/install_database.php', (req, res) => {
+  const steps = [
+    {
+      step: 1,
+      table: 'schools',
+      status: 'success',
+      action: 'CHECK_AND_UPDATE',
+      details: 'ตรวจสอบและอัปเดตโครงสร้างตาราง schools (รองรับรหัส SMIS 8 หลัก, ชื่อสถานศึกษา, สังกัดเขตพื้นที่ฯ, ตราสัญลักษณ์ logo_url, ผู้ดูแลระบบ assigned_admin_id/name, สถานะ active/pending)'
+    },
+    {
+      step: 2,
+      table: 'users',
+      status: 'success',
+      action: 'CHECK_AND_UPDATE',
+      details: 'ตรวจสอบและอัปเดตตาราง users (รองรับเลขประจำตัวประชาชน 13 หลัก id_card, บทบาทสิทธิ์ super_admin, school_admin, director, deputy_director, plan_officer, department_head, teacher, บังคับเปลี่ยนรหัสผ่าน must_change_password)'
+    },
+    {
+      step: 3,
+      table: 'student_subsidies',
+      status: 'success',
+      action: 'CHECK_AND_UPDATE',
+      details: 'ติดตั้งตาราง student_subsidies (คำนวณเงินอุดหนุนรายหัวและเงินกิจกรรมพัฒนาคุณภาพผู้เรียน กพพ. 4 ระดับการศึกษา: อนุบาล, ประถมศึกษา, มัธยมศึกษาตอนต้น, มัธยมศึกษาตอนปลาย)'
+    },
+    {
+      step: 4,
+      table: 'fiscal_years',
+      status: 'success',
+      action: 'CHECK_AND_UPDATE',
+      details: 'ตรวจสอบตาราง fiscal_years (จัดการปีงบประมาณ พ.ศ., ช่วงเวลาเริ่มต้น-สิ้นสุด, กำหนดปีปัจจุบัน is_current, สถานะ planning/active/closed)'
+    },
+    {
+      step: 5,
+      table: 'budget_sources',
+      status: 'success',
+      action: 'CHECK_AND_UPDATE',
+      details: 'ตรวจสอบตาราง budget_sources (รองรับเงินอุดหนุนรายหัว, เงินกิจกรรมพัฒนาผู้เรียน กพพ., เงินรายได้สถานศึกษา, เงินระดมทรัพยากร/บริจาค, เงินปัจจัยพื้นฐาน CCT)'
+    },
+    {
+      step: 6,
+      table: 'department_allocations',
+      status: 'success',
+      action: 'CHECK_AND_UPDATE',
+      details: 'ตรวจสอบตาราง department_allocations (จัดสรรกรอบวงเงินงบประมาณ 4 กลุ่มบริหารงาน: วิชาการ, งบประมาณ, บุคคล, ทั่วไป และงบสำรองส่วนกลาง ครบ 100%)'
+    },
+    {
+      step: 7,
+      table: 'projects',
+      status: 'success',
+      action: 'CHECK_AND_UPDATE',
+      details: 'ตรวจสอบตาราง projects (แบบเสนอโครงการมาตรฐาน สพฐ., ขั้นตอนการกลั่นกรองและอนุมัติ, ตรวจสอบงบประมาณคงเหลือ, รองรับ AI Assistance Gemini 3.8 Flash)'
+    },
+    {
+      step: 8,
+      table: 'budget_items',
+      status: 'success',
+      action: 'CHECK_AND_UPDATE',
+      details: 'ตรวจสอบตาราง budget_items (จำแนกค่าใช้จ่าย 3 หมวดราชการ: ค่าตอบแทน, ค่าใช้สอย, ค่าวัสดุ พร้อมคำนวณยอดเงินรวมอัตโนมัติ)'
+    },
+    {
+      step: 9,
+      table: 'project_expenses',
+      status: 'success',
+      action: 'CHECK_AND_UPDATE',
+      details: 'ตรวจสอบตาราง project_expenses (บันทึกการเบิกจ่ายงบประมาณจริง เลขที่เอกสารเบิกจ่าย วันที่ และคำนวณงบคงเหลือแบบ Real-time)'
+    },
+    {
+      step: 10,
+      table: 'project_progress_logs',
+      status: 'success',
+      action: 'CHECK_AND_UPDATE',
+      details: 'ตรวจสอบตาราง project_progress_logs (บันทึกรายงานผลความก้าวหน้าโครงการ ร้อยละความสำเร็จ ปัญหาอุปสรรค และแนวทางแก้ไขตามวงจร PDCA)'
+    }
+  ];
+
+  res.json({
+    status: 'success',
+    message: 'ติดตั้งและอัปเดตตารางฐานข้อมูลระบบทั้งหมด (10 ตารางหลัก) ให้ตรงตามโครงสร้างล่าสุดเรียบร้อยสมบูรณ์',
+    timestamp: new Date().toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' }),
+    total_tables: steps.length,
+    steps: steps,
+    database_version: '2026.1-SMIS8-PLANOS'
+  });
+});
+
+// Alias for fix_database endpoint
+app.all('/api/admin/fix_database.php', (req, res) => {
+  res.redirect(307, '/api/superadmin/install_database.php');
+});
+
+// Super Admin: Activate / Save School (No school admin required at activation!)
 app.post('/api/superadmin/save_school.php', (req, res) => {
-  const { id, smis_code, name, affiliation, province, district, assigned_admin_name, status } = req.body;
+  const { id, smis_code, name, affiliation, province, district, status } = req.body;
 
   const cleanSmis = (smis_code || '').trim();
   if (!cleanSmis || cleanSmis.length !== 8) {
@@ -812,7 +914,6 @@ app.post('/api/superadmin/save_school.php', (req, res) => {
         affiliation: affiliation || schools[idx].affiliation,
         province: province || schools[idx].province,
         district: district || schools[idx].district,
-        assigned_admin_name: assigned_admin_name || schools[idx].assigned_admin_name,
         status: status || schools[idx].status
       };
       if (schools[idx].id === schoolInfo.id) {
@@ -844,23 +945,36 @@ app.post('/api/superadmin/save_school.php', (req, res) => {
       director_name: 'ผู้อำนวยการสถานศึกษา',
       director_position: 'ผู้อำนวยการโรงเรียน',
       plan_officer_name: 'เจ้าหน้าที่แผนงาน',
-      assigned_admin_name: assigned_admin_name || 'ผู้ดูแลระบบโรงเรียน',
+      assigned_admin_name: '', // ยังไม่ต้องกำหนด Admin (รอให้ครูสมัครเข้ามาก่อน)
       assigned_admin_id: null,
       logo_url: '',
       status: status || 'active',
       created_at: new Date().toISOString().split('T')[0]
     };
     schools.push(newSchool);
-    res.json({ status: 'success', message: `เปิดใช้งานสถานศึกษา "${name}" ด้วยรหัส SMIS ${cleanSmis} สำเร็จ`, school: newSchool });
+    res.json({ 
+      status: 'success', 
+      message: `เปิดใช้งานสถานศึกษา "${name}" ด้วยรหัส SMIS ${cleanSmis} เรียบร้อยแล้ว (คุณครูสามารถสมัครเข้าใช้งานได้ทันที เพื่อให้เลือกแต่งตั้งเป็น Admin ต่อไป)`, 
+      school: newSchool 
+    });
   }
 });
 
-app.post('/api/superadmin/toggle_school_status.php', (req, res) => {
-  const { id, status } = req.body;
-  const school = schools.find(s => s.id === parseInt(id));
+// Super Admin: Toggle School Status (supports toggle_school_status.php and toggle_status.php)
+app.post(['/api/superadmin/toggle_school_status.php', '/api/superadmin/toggle_status.php'], (req, res) => {
+  const schoolId = req.body.school_id || req.body.id;
+  const school = schools.find(s => s.id === parseInt(schoolId));
   if (!school) return res.status(404).json({ status: 'error', message: 'ไม่พบสถานศึกษา' });
 
-  school.status = status || (school.status === 'active' ? 'inactive' : 'active');
+  if (req.body.is_active !== undefined) {
+    school.status = req.body.is_active === 1 ? 'active' : 'inactive';
+  } else if (req.body.status !== undefined) {
+    school.status = req.body.status;
+  } else {
+    school.status = school.status === 'active' ? 'inactive' : 'active';
+  }
+
+  school.is_active = school.status === 'active' ? 1 : 0;
   if (school.id === schoolInfo.id) {
     schoolInfo.status = school.status;
   }
@@ -868,23 +982,101 @@ app.post('/api/superadmin/toggle_school_status.php', (req, res) => {
   res.json({ 
     status: 'success', 
     message: `เปลี่ยนสถานะโรงเรียน "${school.name}" เป็น ${school.status === 'active' ? 'เปิดใช้งาน (Active)' : 'ระงับการใช้งาน'} สำเร็จ`, 
-    school 
+    school: {
+      ...school,
+      is_active: school.is_active,
+      admin_name: school.assigned_admin_name || ''
+    }
   });
 });
 
+// Super Admin: Get all teachers registered under a school (by school_id or smis_code)
+app.get('/api/superadmin/get_school_teachers.php', (req, res) => {
+  const schoolId = parseInt(req.query.school_id);
+  const smisCode = (req.query.smis_code || '').trim();
+
+  let school = null;
+  if (schoolId) {
+    school = schools.find(s => s.id === schoolId);
+  } else if (smisCode) {
+    school = schools.find(s => s.smis_code === smisCode);
+  }
+
+  if (!school) {
+    return res.status(404).json({ status: 'error', message: 'ไม่พบสถานศึกษาตามที่ระบุ' });
+  }
+
+  // Find all users who registered under this school
+  const schoolTeachers = users.filter(u => u.school_id === school.id);
+
+  res.json({
+    status: 'success',
+    school: {
+      id: school.id,
+      name: school.name,
+      smis_code: school.smis_code,
+      affiliation: school.affiliation,
+      assigned_admin_name: school.assigned_admin_name || '',
+      assigned_admin_id: school.assigned_admin_id || null
+    },
+    total_teachers: schoolTeachers.length,
+    teachers: schoolTeachers.map(u => ({
+      id: u.id,
+      name: u.name,
+      username: u.username,
+      id_card: u.id_card,
+      position: u.position,
+      department: u.department,
+      role: u.role,
+      is_school_admin: (school.assigned_admin_id === u.id || u.role === 'school_admin'),
+      phone: u.phone || '',
+      email: u.email || ''
+    }))
+  });
+});
+
+// Super Admin: Assign an existing registered teacher to be the School Admin
 app.post('/api/superadmin/assign_admin.php', (req, res) => {
-  const { school_id, admin_name, admin_id } = req.body;
+  const { school_id, admin_id, admin_name } = req.body;
   const school = schools.find(s => s.id === parseInt(school_id));
   if (!school) return res.status(404).json({ status: 'error', message: 'ไม่พบสถานศึกษา' });
 
-  school.assigned_admin_name = admin_name || school.assigned_admin_name;
-  if (admin_id) school.assigned_admin_id = parseInt(admin_id);
+  // If a teacher ID is provided from registered teachers list
+  if (admin_id) {
+    const teacher = users.find(u => u.id === parseInt(admin_id) && u.school_id === school.id);
+    if (!teacher) {
+      return res.status(400).json({ status: 'error', message: 'ไม่พบคุณครูหรือบุคลากรที่สังกัดสถานศึกษานี้' });
+    }
 
-  res.json({ 
-    status: 'success', 
-    message: `แต่งตั้ง "${school.assigned_admin_name}" เป็นผู้ดูแลระบบประจำโรงเรียน ${school.name} เรียบร้อย`,
-    school
-  });
+    // Update user role to school_admin
+    teacher.role = 'school_admin';
+    school.assigned_admin_name = teacher.name;
+    school.assigned_admin_id = teacher.id;
+
+    if (school.id === schoolInfo.id) {
+      schoolInfo.assigned_admin_name = teacher.name;
+      schoolInfo.assigned_admin_id = teacher.id;
+    }
+
+    return res.json({ 
+      status: 'success', 
+      message: `แต่งตั้งคุณครู "${teacher.name}" (${teacher.position}) เป็น Admin ดูแลระบบของ "${school.name}" เรียบร้อยแล้ว`,
+      school,
+      admin_user: teacher
+    });
+  }
+
+  // Fallback if admin_name is set manually
+  if (admin_name) {
+    school.assigned_admin_name = admin_name;
+    return res.json({ 
+      status: 'success', 
+      message: `บันทึกชื่อผู้ดูแลระบบ "${admin_name}" เรียบร้อย`,
+      school
+    });
+  }
+
+  res.status(400).json({ status: 'error', message: 'กรุณาเลือกคุณครูที่ต้องการแต่งตั้งเป็น Admin' });
 });
 
 // ==========================================

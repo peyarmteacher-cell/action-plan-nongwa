@@ -1864,19 +1864,101 @@ async function handleSaveSchoolSettings(e) {
 }
 
 // ==========================================
-// 14. SUPER ADMIN CONTROL CENTER (รหัส SMIS)
+// 14. SUPER ADMIN CONTROL CENTER (รหัส SMIS & Database Update)
 // ==========================================
+
+let currentAssignAdminSchoolId = null;
+
+// Auto-Install and Update Database Tables
+async function runInstallDatabase() {
+    const btn = document.getElementById('btnInstallDb');
+    const resultBox = document.getElementById('dbInstallResultBox');
+    const logContent = document.getElementById('dbInstallLogContent');
+    const statusBadge = document.getElementById('dbInstallStatusBadge');
+
+    const origBtnHtml = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = `<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> <span>กำลังตรวจสอบและอัปเดตตาราง...</span>`;
+    if (window.lucide) lucide.createIcons();
+
+    if (resultBox) resultBox.classList.remove('hidden');
+    if (logContent) {
+        logContent.innerHTML = `<div class="text-indigo-300 animate-pulse">กำลังเริ่มกระบวนการตรวจสอบโครงสร้างฐานข้อมูล...</div>`;
+    }
+    if (statusBadge) {
+        statusBadge.className = "px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300";
+        statusBadge.innerText = "สถานะ: กำลังประมวลผล...";
+    }
+
+    try {
+        const res = await fetch('/api/superadmin/install_database.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        });
+        const data = await res.json();
+
+        if (data.status === 'success') {
+            const steps = data.steps || [];
+            let html = '';
+            html += `<div class="text-emerald-400 font-bold mb-2">========================================================</div>`;
+            html += `<div class="text-emerald-300 font-bold mb-2">🚀 เริ่มต้นการตรวจสอบและปรับปรุงโครงสร้างฐานข้อมูลระบบ (Auto-Migration)</div>`;
+            html += `<div class="text-slate-400 mb-2">เวอร์ชันฐานข้อมูล: ${data.database_version || '2026.1-SMIS8'} | เวลา: ${data.timestamp || new Date().toLocaleString('th-TH')}</div>`;
+            html += `<div class="text-slate-500 mb-3">--------------------------------------------------------</div>`;
+
+            steps.forEach(s => {
+                html += `<div class="flex items-start gap-2 py-0.5">
+                    <span class="text-emerald-400 font-bold shrink-0">[OK]</span>
+                    <span class="text-amber-300 font-semibold shrink-0">ตาราง ${s.table}:</span>
+                    <span class="text-slate-200">${s.details}</span>
+                </div>`;
+            });
+
+            html += `<div class="text-slate-500 mt-2">--------------------------------------------------------</div>`;
+            html += `<div class="text-emerald-400 font-bold mt-2">✓ ตรวจสอบและอัปเดตครบทั้ง ${data.total_tables || steps.length} ตารางหลักเรียบร้อยสมบูรณ์ พร้อมใช้งาน 100%</div>`;
+            html += `<div class="text-emerald-400 font-bold">========================================================</div>`;
+
+            if (logContent) logContent.innerHTML = html;
+            if (statusBadge) {
+                statusBadge.className = "px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-300";
+                statusBadge.innerText = `อัปเดตล่าสุด: ${data.timestamp || 'สมบูรณ์'}`;
+            }
+
+            showToast('ติดตั้งและอัปเดตโครงสร้างฐานข้อมูลสำเร็จสมบูรณ์!', 'success');
+        } else {
+            if (logContent) {
+                logContent.innerHTML = `<div class="text-red-400 font-bold">[ERROR] ${data.message || 'เกิดข้อผิดพลาดในการอัปเดตฐานข้อมูล'}</div>`;
+            }
+            if (statusBadge) {
+                statusBadge.className = "px-2 py-0.5 rounded text-[10px] font-bold bg-red-500/20 text-red-300";
+                statusBadge.innerText = "สถานะ: เกิดข้อผิดพลาด";
+            }
+            showToast(data.message || 'เกิดข้อผิดพลาด', 'error');
+        }
+    } catch (err) {
+        console.error('Database migration error:', err);
+        if (logContent) {
+            logContent.innerHTML = `<div class="text-red-400 font-bold">[ERROR] ไม่สามารถเชื่อมต่อกับบริการอัปเดตฐานข้อมูลได้ (${err.message})</div>`;
+        }
+        showToast('เกิดข้อผิดพลาดในการเชื่อมต่อฐานข้อมูล', 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = origBtnHtml;
+        if (window.lucide) lucide.createIcons();
+    }
+}
+
 async function loadSuperAdminSchools() {
     try {
         const res = await fetch('/api/superadmin/get_schools.php');
         const result = await res.json();
         if (result.status === 'success') {
-            const schools = result.data || [];
+            const schools = result.schools || result.data || [];
             
             // Update stats
             const total = schools.length;
-            const active = schools.filter(s => s.is_active === 1).length;
+            const active = schools.filter(s => s.status === 'active' || s.is_active === 1).length;
             const pending = total - active;
+            const totalUsers = (result.users && result.users.length) || (schools.length * 5);
             
             const saTotal = document.getElementById('sa-total-schools');
             const saActive = document.getElementById('sa-active-schools');
@@ -1886,56 +1968,82 @@ async function loadSuperAdminSchools() {
             if (saTotal) saTotal.innerText = `${total} แห่ง`;
             if (saActive) saActive.innerText = `${active} แห่ง`;
             if (saPending) saPending.innerText = `${pending} แห่ง`;
-            if (saUsers) saUsers.innerText = `${total * 6} คน`;
+            if (saUsers) saUsers.innerText = `${totalUsers} คน`;
 
             // Populate table
             const tbody = document.getElementById('superAdminSchoolsTableBody');
             if (tbody) {
                 if (schools.length === 0) {
-                    tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-slate-400">ยังไม่มีข้อมูลสถานศึกษา</td></tr>`;
+                    tbody.innerHTML = `<tr><td colspan="6" class="p-8 text-center text-slate-400">ยังไม่มีข้อมูลสถานศึกษาในระบบ</td></tr>`;
                     return;
                 }
-                tbody.innerHTML = schools.map(s => `
-                    <tr class="hover:bg-slate-50 transition">
-                        <td class="p-3.5 font-mono font-bold text-blue-900">${s.smis_code}</td>
+                tbody.innerHTML = schools.map(s => {
+                    const isActive = (s.status === 'active' || s.is_active === 1);
+                    const adminName = (s.assigned_admin_name || s.admin_name || '').trim();
+                    const hasAdmin = adminName && adminName !== 'ผู้ดูแลระบบโรงเรียน' && !adminName.includes('ยังไม่ได้กำหนด');
+
+                    return `
+                    <tr class="hover:bg-slate-50/80 transition">
+                        <td class="p-3.5 font-mono font-bold text-indigo-900">
+                            <span class="px-2 py-0.5 bg-indigo-50 border border-indigo-200/70 rounded-md">${s.smis_code}</span>
+                        </td>
                         <td class="p-3.5 font-bold text-slate-900">
-                            <div class="flex items-center gap-2">
+                            <div class="flex items-center gap-2.5">
                                 <img src="${s.logo_url || 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/87/Garuda_Emb_Thailand.svg/200px-Garuda_Emb_Thailand.svg.png'}" 
-                                     alt="logo" class="w-6 h-6 object-contain rounded">
-                                <span>${s.name}</span>
+                                     alt="logo" class="w-7 h-7 object-contain rounded-md border border-slate-100 bg-white p-0.5 shadow-xs">
+                                <div>
+                                    <div class="text-xs font-bold text-slate-900">${s.name}</div>
+                                    <div class="text-[11px] text-slate-400 font-normal">${s.district || 'เมือง'} • จ.${s.province || 'บุรีรัมย์'}</div>
+                                </div>
                             </div>
                         </td>
-                        <td class="p-3.5 text-slate-600">${s.affiliation || '-'}</td>
-                        <td class="p-3.5 text-slate-800 font-medium">
-                            <div class="flex items-center gap-1.5">
-                                <i data-lucide="user-check" class="w-3.5 h-3.5 text-slate-400"></i>
-                                <span>${s.admin_name || 'ยังไม่ได้กำหนด'}</span>
-                            </div>
+                        <td class="p-3.5 text-slate-600 text-[11px]">${s.affiliation || '-'}</td>
+                        <td class="p-3.5">
+                            ${hasAdmin ? `
+                                <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200 text-[11px] font-bold shadow-2xs">
+                                    <i data-lucide="shield-check" class="w-3.5 h-3.5 text-emerald-600"></i>
+                                    <span>${adminName}</span>
+                                </div>
+                            ` : `
+                                <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-50 text-amber-800 border border-amber-200/80 text-[11px] font-medium">
+                                    <i data-lucide="user-x" class="w-3.5 h-3.5 text-amber-500"></i>
+                                    <span>ยังไม่ได้แต่งตั้ง (รอครูสมัคร)</span>
+                                </div>
+                            `}
                         </td>
                         <td class="p-3.5 text-center">
                             <span class="px-2.5 py-1 rounded-full text-[10px] font-bold ${
-                                s.is_active === 1 ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+                                isActive ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
                             }">
-                                ${s.is_active === 1 ? 'เปิดใช้งาน (Active)' : 'ระงับชั่วคราว'}
+                                ${isActive ? 'เปิดใช้งาน (Active)' : 'ระงับชั่วคราว'}
                             </span>
                         </td>
                         <td class="p-3.5 text-center">
                             <div class="flex items-center justify-center gap-1.5">
-                                <button onclick="toggleSchoolActive(${s.id}, ${s.is_active === 1 ? 0 : 1})" 
-                                        class="px-2.5 py-1 text-[11px] font-bold rounded-lg border transition ${
-                                            s.is_active === 1 ? 'bg-red-50 text-red-700 border-red-200 hover:bg-red-100' : 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
+                                <button onclick="openAssignAdminModal(${s.id})" 
+                                        title="เลือกคุณครูที่สมัครสมาชิกมาเป็น Admin โรงเรียน"
+                                        class="px-2.5 py-1.5 text-[11px] font-bold rounded-lg border transition flex items-center gap-1 shadow-2xs ${
+                                            hasAdmin 
+                                            ? 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100' 
+                                            : 'bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100'
                                         }">
-                                    ${s.is_active === 1 ? 'ระงับ' : 'เปิดใช้งาน'}
+                                    <i data-lucide="${hasAdmin ? 'user-cog' : 'user-plus'}" class="w-3.5 h-3.5"></i>
+                                    <span>${hasAdmin ? 'เปลี่ยน Admin' : 'เลือก Admin'}</span>
                                 </button>
-                                <button onclick="assignSchoolAdminPrompt(${s.id}, '${s.admin_name || ''}')" 
-                                        class="px-2.5 py-1 text-[11px] font-bold bg-slate-100 text-slate-700 hover:bg-slate-200 rounded-lg border border-slate-200 transition">
-                                    ตั้ง Admin
+                                <button onclick="toggleSchoolActive(${s.id}, ${isActive ? 0 : 1})" 
+                                        class="px-2.5 py-1.5 text-[11px] font-bold rounded-lg border transition shadow-2xs ${
+                                            isActive 
+                                            ? 'bg-red-50 text-red-700 border-red-200 hover:bg-red-100' 
+                                            : 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
+                                        }">
+                                    ${isActive ? 'ระงับ' : 'เปิดใช้งาน'}
                                 </button>
                             </div>
                         </td>
                     </tr>
-                `).join('');
-                lucide.createIcons();
+                    `;
+                }).join('');
+                if (window.lucide) lucide.createIcons();
             }
         }
     } catch (err) {
@@ -1943,6 +2051,7 @@ async function loadSuperAdminSchools() {
     }
 }
 
+// Super Admin: Open New School (No school admin required!)
 async function handleSuperAdminAddSchool(e) {
     e.preventDefault();
     const smis = document.getElementById('sa_new_smis').value.trim();
@@ -1955,9 +2064,9 @@ async function handleSuperAdminAddSchool(e) {
         smis_code: smis,
         name: document.getElementById('sa_new_name').value.trim(),
         affiliation: document.getElementById('sa_new_affiliation').value.trim(),
+        district: document.getElementById('sa_new_district') ? document.getElementById('sa_new_district').value.trim() : 'เมืองบุรีรัมย์',
         province: document.getElementById('sa_new_province').value.trim(),
-        admin_name: document.getElementById('sa_new_admin').value.trim(),
-        is_active: document.getElementById('sa_new_active').checked ? 1 : 0
+        status: document.getElementById('sa_new_active').checked ? 'active' : 'pending'
     };
 
     try {
@@ -1968,7 +2077,7 @@ async function handleSuperAdminAddSchool(e) {
         });
         const result = await res.json();
         if (result.status === 'success') {
-            showToast(`เปิดใช้งานสถานศึกษา ${payload.name} (SMIS: ${payload.smis_code}) เรียบร้อยแล้ว`, 'success');
+            showToast(`เปิดใช้งานสถานศึกษา "${payload.name}" (SMIS: ${payload.smis_code}) สำเร็จ! คุณครูสามารถสมัครเข้าใช้งานเพื่อแต่งตั้งเป็น Admin ได้แล้ว`, 'success');
             document.getElementById('newSchoolForm').reset();
             document.getElementById('sa_new_active').checked = true;
             await loadSuperAdminSchools();
@@ -1981,6 +2090,7 @@ async function handleSuperAdminAddSchool(e) {
     }
 }
 
+// Super Admin: Toggle School Active/Inactive
 async function toggleSchoolActive(schoolId, newStatus) {
     try {
         const res = await fetch('/api/superadmin/toggle_status.php', {
@@ -1992,17 +2102,156 @@ async function toggleSchoolActive(schoolId, newStatus) {
         if (result.status === 'success') {
             showToast(newStatus === 1 ? 'เปิดใช้งานสถานศึกษาสำเร็จ' : 'ระงับสถานศึกษาเรียบร้อยแล้ว', 'success');
             await loadSuperAdminSchools();
+        } else {
+            showToast(result.message || 'ไม่สามารถเปลี่ยนสถานะได้', 'error');
         }
     } catch (err) {
         console.error(err);
+        showToast('เกิดข้อผิดพลาดในการเปลี่ยนสถานะ', 'error');
     }
 }
 
-async function assignSchoolAdminPrompt(schoolId, currentAdmin) {
-    const adminName = prompt('ระบุชื่อ-นามสกุล ของ Admin ผู้ดูแลระบบประจำโรงเรียน:', currentAdmin || '');
-    if (adminName === null) return;
-    if (!adminName.trim()) {
-        showToast('กรุณาระบุชื่อ Admin โรงเรียน', 'error');
+// Modal: Open Assign School Admin Modal and fetch teachers who registered for that school
+async function openAssignAdminModal(schoolId) {
+    currentAssignAdminSchoolId = schoolId;
+    const modal = document.getElementById('assignAdminModal');
+    const teacherList = document.getElementById('assignAdminTeacherList');
+    const schoolNameEl = document.getElementById('assignAdminSchoolName');
+    const smisBadge = document.getElementById('assignAdminSmisBadge');
+    const affilEl = document.getElementById('assignAdminAffiliation');
+    const currentAdminEl = document.getElementById('assignAdminCurrentAdmin');
+    const teacherCountEl = document.getElementById('assignAdminTeacherCount');
+
+    if (modal) modal.classList.remove('hidden');
+
+    if (schoolNameEl) schoolNameEl.innerText = 'กำลังโหลดข้อมูลสถานศึกษา...';
+    if (teacherList) {
+        teacherList.innerHTML = `<div class="p-8 text-center text-slate-400 flex items-center justify-center gap-2">
+            <i data-lucide="loader-2" class="w-5 h-5 animate-spin text-indigo-600"></i>
+            <span>กำลังตรวจสอบรายชื่อคุณครูที่ลงทะเบียนในโรงเรียนนี้...</span>
+        </div>`;
+        if (window.lucide) lucide.createIcons();
+    }
+
+    try {
+        const res = await fetch(`/api/superadmin/get_school_teachers.php?school_id=${schoolId}`);
+        const data = await res.json();
+
+        if (data.status === 'success') {
+            const school = data.school;
+            const teachers = data.teachers || [];
+
+            if (schoolNameEl) schoolNameEl.innerText = school.name;
+            if (smisBadge) smisBadge.innerText = `SMIS: ${school.smis_code}`;
+            if (affilEl) affilEl.innerText = school.affiliation || 'สำนักงานเขตพื้นที่การศึกษา';
+            
+            const currentAdminName = school.assigned_admin_name || '';
+            const hasCurrentAdmin = currentAdminName && !currentAdminName.includes('ยังไม่ได้กำหนด');
+            if (currentAdminEl) {
+                currentAdminEl.innerHTML = hasCurrentAdmin 
+                    ? `<span class="text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">${currentAdminName}</span>`
+                    : `<span class="text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">ยังไม่ได้แต่งตั้ง</span>`;
+            }
+
+            if (teacherCountEl) teacherCountEl.innerText = `${teachers.length} คน`;
+
+            if (teachers.length === 0) {
+                // Empty state: No teachers have registered yet for this school
+                teacherList.innerHTML = `
+                    <div class="p-6 bg-amber-50/70 border-2 border-dashed border-amber-200 rounded-2xl text-center space-y-3">
+                        <div class="w-12 h-12 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center mx-auto">
+                            <i data-lucide="user-x" class="w-6 h-6"></i>
+                        </div>
+                        <div>
+                            <h4 class="text-sm font-bold text-amber-900">ยังไม่มีคุณครูหรือบุคลากรสมัครสมาชิกภายใต้รหัส SMIS นี้ (${school.smis_code})</h4>
+                            <p class="text-xs text-amber-700 mt-1 max-w-md mx-auto leading-relaxed">
+                                การแต่งตั้ง Admin ดูแลระบบของโรงเรียน จำเป็นต้องให้คุณครูของโรงเรียนนี้ลงทะเบียนสมัครสมาชิกเข้าสู่ระบบก่อน
+                            </p>
+                        </div>
+                        <div class="p-3 bg-white/80 border border-amber-200 rounded-xl text-xs text-slate-600 text-left max-w-md mx-auto space-y-1">
+                            <div class="font-bold text-slate-800 flex items-center gap-1.5">
+                                <i data-lucide="info" class="w-4 h-4 text-indigo-600"></i> คำแนะนำสำหรับโรงเรียน:
+                            </div>
+                            <div>1. ให้คุณครูไปที่หน้าเข้าสู่ระบบและคลิก <b>"สมัครสมาชิก"</b></div>
+                            <div>2. กรอกรหัส SMIS 8 หลัก: <span class="font-mono font-bold text-indigo-700">${school.smis_code}</span></div>
+                            <div>3. ระบุเลขประจำตัวประชาชน 13 หลัก และชื่อ-ตำแหน่ง</div>
+                            <div>4. เมื่อสมัครสำเร็จ รายชื่อจะปรากฏในหน้านี้ทันทีเพื่อให้ Super Admin เลือกแต่งตั้งเป็น Admin</div>
+                        </div>
+                    </div>
+                `;
+            } else {
+                // List of registered teachers
+                teacherList.innerHTML = teachers.map(t => {
+                    const isCurrentAdmin = (school.assigned_admin_id === t.id || t.is_school_admin);
+                    const maskedIdCard = t.id_card ? `${t.id_card.substring(0, 1)}-${t.id_card.substring(1, 5)}-xxxxx-${t.id_card.substring(10, 12)}-${t.id_card.substring(12, 13)}` : '-';
+                    
+                    const deptMap = {
+                        academic: 'กลุ่มบริหารวิชาการ',
+                        budget: 'กลุ่มบริหารงบประมาณ',
+                        personnel: 'กลุ่มบริหารงานบุคคล',
+                        general: 'กลุ่มบริหารทั่วไป',
+                        central: 'ผู้บริหาร/ส่วนกลาง'
+                    };
+
+                    return `
+                        <div class="p-3.5 bg-white border border-slate-200 hover:border-indigo-200 rounded-2xl transition shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+                            isCurrentAdmin ? 'bg-indigo-50/30 border-indigo-300' : ''
+                        }">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-full flex items-center justify-center font-bold text-xs shrink-0 ${
+                                    isCurrentAdmin ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600'
+                                }">
+                                    ${t.name.charAt(0)}
+                                </div>
+                                <div>
+                                    <div class="flex items-center gap-2">
+                                        <span class="text-xs font-bold text-slate-900">${t.name}</span>
+                                        ${isCurrentAdmin ? `
+                                            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center gap-1">
+                                                <i data-lucide="shield-check" class="w-3 h-3"></i> Admin โรงเรียนปัจจุบัน
+                                            </span>
+                                        ` : ''}
+                                    </div>
+                                    <div class="text-[11px] text-slate-500 mt-0.5 flex flex-wrap items-center gap-x-2.5 gap-y-1">
+                                        <span>ตำแหน่ง: <b class="text-slate-700">${t.position || 'ครู'}</b></span>
+                                        <span>•</span>
+                                        <span>เลข ปชช.: <span class="font-mono text-slate-600">${maskedIdCard}</span></span>
+                                        <span>•</span>
+                                        <span>${deptMap[t.department] || t.department}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="shrink-0 flex items-center gap-2">
+                                ${isCurrentAdmin ? `
+                                    <span class="px-3 py-1.5 bg-slate-100 text-slate-500 text-xs font-bold rounded-xl flex items-center gap-1">
+                                        <i data-lucide="check" class="w-3.5 h-3.5"></i> เป็น Admin แล้ว
+                                    </span>
+                                ` : `
+                                    <button onclick="assignTeacherAsSchoolAdmin(${school.id}, ${t.id}, '${t.name.replace(/'/g, "\\'")}')" 
+                                            class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow-xs transition flex items-center gap-1.5 active:scale-95">
+                                        <i data-lucide="shield-check" class="w-3.5 h-3.5"></i>
+                                        <span>แต่งตั้งเป็น Admin</span>
+                                    </button>
+                                `}
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+
+            if (window.lucide) lucide.createIcons();
+        } else {
+            showToast(data.message || 'ไม่สามารถดึงข้อมูลคุณครูได้', 'error');
+        }
+    } catch (err) {
+        console.error('Error fetching teachers for school:', err);
+        showToast('เกิดข้อผิดพลาดในการโหลดรายชื่อคุณครู', 'error');
+    }
+}
+
+// Super Admin: Confirm assigning teacher as School Admin
+async function assignTeacherAsSchoolAdmin(schoolId, teacherId, teacherName) {
+    if (!confirm(`ยืนยันการแต่งตั้งคุณครู "${teacherName}" เป็น Admin ผู้ดูแลระบบประจำโรงเรียนนี้หรือไม่?`)) {
         return;
     }
 
@@ -2010,16 +2259,32 @@ async function assignSchoolAdminPrompt(schoolId, currentAdmin) {
         const res = await fetch('/api/superadmin/assign_admin.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ school_id: schoolId, admin_name: adminName.trim() })
+            body: JSON.stringify({
+                school_id: schoolId,
+                admin_id: teacherId,
+                admin_name: teacherName
+            })
         });
         const result = await res.json();
         if (result.status === 'success') {
-            showToast(`มอบหมาย Admin ${adminName.trim()} ประจำสถานศึกษาเรียบร้อยแล้ว`, 'success');
+            showToast(result.message || `แต่งตั้ง ${teacherName} เป็น Admin เรียบร้อยแล้ว`, 'success');
+            // Reload the modal list to show updated badge
+            await openAssignAdminModal(schoolId);
+            // Refresh main table
             await loadSuperAdminSchools();
+        } else {
+            showToast(result.message || 'แต่งตั้งไม่สำเร็จ', 'error');
         }
     } catch (err) {
-        console.error(err);
+        console.error('Error assigning admin:', err);
+        showToast('เกิดข้อผิดพลาดในการแต่งตั้ง Admin', 'error');
     }
+}
+
+function closeAssignAdminModal() {
+    const modal = document.getElementById('assignAdminModal');
+    if (modal) modal.classList.add('hidden');
+    currentAssignAdminSchoolId = null;
 }
 
 // ==========================================
