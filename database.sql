@@ -250,18 +250,19 @@ INSERT INTO `app_settings` (`setting_key`, `setting_value`) VALUES
 ('plan_officer_name', 'นางวิไลพร งบมั่นคง')
 ON DUPLICATE KEY UPDATE `setting_value` = VALUES(`setting_value`);
 
--- บัญชีผู้ใช้งานระบบตัวอย่าง (5 บทบาท)
--- รหัสผ่านเริ่มต้นคือ 123456
-INSERT INTO `users` (`id`, `school_id`, `username`, `password`, `name`, `position`, `department`, `role`, `phone`, `email`, `is_approved`) VALUES
-(1, 1, 'admin', '123456', 'ผู้ดูแลระบบส่วนกลาง', 'นักวิชาการคอมพิวเตอร์', 'budget', 'admin', '0812345678', 'admin@school.ac.th', 1),
-(2, 1, 'director', '123456', 'นายธีระพล เกียรติวิทยา', 'ผู้อำนวยการโรงเรียน', 'central', 'director', '0891234567', 'director@school.ac.th', 1),
-(3, 1, 'planofficer', '123456', 'นางวิไลพร งบมั่นคง', 'เจ้าหน้าที่แผนงานและงบประมาณ', 'budget', 'plan_officer', '0867891234', 'plan@school.ac.th', 1),
-(4, 1, 'head_academic', '123456', 'นางกัญญา วิชาการดี', 'หัวหน้ากลุ่มบริหารวิชาการ', 'academic', 'department_head', '0856781234', 'academic@school.ac.th', 1),
-(5, 1, 'head_budget', '123456', 'นายสุรชัย บัญชีทรัพย์', 'หัวหน้ากลุ่มบริหารงบประมาณ', 'budget', 'department_head', '0845671234', 'budget@school.ac.th', 1),
-(6, 1, 'head_personnel', '123456', 'นางสาวพิมพ์ใจ เสริมบุคคล', 'หัวหน้ากลุ่มบริหารงานบุคคล', 'personnel', 'department_head', '0834561234', 'personnel@school.ac.th', 1),
-(7, 1, 'head_general', '123456', 'นายพิชิต สภาพแวดล้อม', 'หัวหน้ากลุ่มบริหารทั่วไป', 'general', 'department_head', '0823451234', 'general@school.ac.th', 1),
-(8, 1, 'teacher_somchai', '123456', 'นายสมชาย สอนสนุก', 'ครูชำนาญการ (วิชาการ)', 'academic', 'teacher', '0811112222', 'somchai@school.ac.th', 1),
-(9, 1, 'teacher_somying', '123456', 'นางสมหญิง กิจกรรมเลิศ', 'ครู ค.ศ. 1 (ทั่วไป)', 'general', 'teacher', '0822223333', 'somying@school.ac.th', 1);
+-- บัญชีผู้ใช้งานระบบตัวอย่าง (ครอบคลุม Super Admin และทุกตำแหน่ง)
+-- รหัสผ่านเริ่มต้น Super Admin: password123 (หรือ 123456)
+INSERT INTO `users` (`id`, `school_id`, `username`, `id_card`, `password`, `name`, `position`, `department`, `role`, `phone`, `email`, `must_change_password`, `is_approved`) VALUES
+(1, NULL, 'superadmin', '1310000000001', 'password123', 'ผู้ดูแลระบบระดับเขตพื้นที่ฯ (Super Admin)', 'ผู้อำนวยการกลุ่มนโยบายและแผน (สพป./สพฐ.)', 'central', 'super_admin', '0812345678', 'superadmin@obec.go.th', 0, 1),
+(2, 1, 'schooladmin', '1310000000002', '123456', 'นางสาวสุภาวดี ดูแลระบบ', 'ผู้ดูแลระบบสารสนเทศโรงเรียน', 'budget', 'school_admin', '0823456789', 'admin@anubanpat.ac.th', 0, 1),
+(3, 1, 'director', '1310000000003', '123456', 'นายธีระพล เกียรติวิทยา', 'ผู้อำนวยการโรงเรียนอนุบาลพัฒนาวิทยา', 'central', 'director', '0891234567', 'director@anubanpat.ac.th', 0, 1),
+(4, 1, 'planofficer', '1310000000005', '123456', 'นางวิไลพร งบมั่นคง', 'เจ้าหน้าที่แผนงานและงบประมาณ', 'budget', 'plan_officer', '0867891234', 'plan@anubanpat.ac.th', 0, 1),
+(5, 1, 'head_academic', '1310000000006', '123456', 'นางกัญญา วิชาการดี', 'หัวหน้ากลุ่มบริหารวิชาการ', 'academic', 'department_head', '0856781234', 'academic@anubanpat.ac.th', 0, 1),
+(6, 1, 'head_budget', '1310000000007', '123456', 'นายสุรชัย บัญชีทรัพย์', 'หัวหน้ากลุ่มบริหารงบประมาณ', 'budget', 'department_head', '0845671234', 'budget@anubanpat.ac.th', 0, 1),
+(7, 1, 'head_personnel', '1310000000008', '123456', 'นางสาวพิมพ์ใจ เสริมบุคคล', 'หัวหน้ากลุ่มบริหารงานบุคคล', 'personnel', 'department_head', '0834561234', 'personnel@anubanpat.ac.th', 0, 1),
+(8, 1, 'head_general', '1310000000009', '123456', 'นายพิชิต สภาพแวดล้อม', 'หัวหน้ากลุ่มบริหารทั่วไป', 'general', 'department_head', '0823451234', 'general@anubanpat.ac.th', 0, 1),
+(9, 1, 'teacher_somchai', '1310000000010', '123456', 'นายสมชาย สอนสนุก', 'ครูชำนาญการ (วิชาการ)', 'academic', 'teacher', '0811112222', 'somchai@anubanpat.ac.th', 0, 1),
+(10, 1, 'teacher_somying', '1310000000011', '123456', 'นางสมหญิง กิจกรรมเลิศ', 'ครูผู้ช่วย (ทั่วไป)', 'general', 'teacher', '0822223333', 'somying@anubanpat.ac.th', 0, 1);
 
 -- ปีงบประมาณ 2568 (ปีปัจจุบัน) และ 2567 (ปีก่อนหน้าสำหรับดูย้อนหลัง)
 INSERT INTO `fiscal_years` (`id`, `school_id`, `year`, `start_date`, `end_date`, `is_current`, `status`, `notes`) VALUES

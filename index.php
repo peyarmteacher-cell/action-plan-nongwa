@@ -53,23 +53,43 @@
             <!-- TAB 1: LOGIN -->
             <!-- ============================================== -->
             <div id="tabContentLogin">
+                <!-- Super Admin Initial Credentials Banner -->
+                <div class="mb-4 p-3 bg-gradient-to-r from-indigo-50 to-blue-50 border border-indigo-200/80 rounded-2xl flex items-start gap-2.5">
+                    <div class="p-2 bg-indigo-600 text-white rounded-xl shrink-0 mt-0.5 shadow-xs">
+                        <i data-lucide="shield-alert" class="w-4 h-4"></i>
+                    </div>
+                    <div class="text-xs text-indigo-950 leading-relaxed">
+                        <div class="font-bold flex items-center gap-1.5 text-indigo-900">
+                            <span>บัญชี Super Admin สำหรับติดตั้งระบบและเชื่อมต่อฐานข้อมูล</span>
+                            <span class="px-1.5 py-0.2 rounded bg-indigo-200/60 text-indigo-800 text-[10px]">เริ่มต้น</span>
+                        </div>
+                        <p class="text-[11px] text-indigo-700/90 mt-0.5">
+                            Username: <code class="px-1.5 py-0.5 bg-white rounded font-mono font-bold text-indigo-900 border border-indigo-200">superadmin</code> 
+                            &nbsp;|&nbsp; รหัสผ่าน: <code class="px-1.5 py-0.5 bg-white rounded font-mono font-bold text-indigo-900 border border-indigo-200">password123</code> (หรือ 123456)
+                        </p>
+                        <p class="text-[10px] text-slate-500 mt-1">
+                            * เมื่อเข้าสู่ระบบแล้ว สามารถแก้ไข Username และ Password ได้ทันทีในเมนู Super Admin
+                        </p>
+                    </div>
+                </div>
+
                 <!-- One-Click Quick Role Switcher for fast evaluation -->
                 <div class="mb-6">
                     <div class="flex items-center justify-between mb-2.5">
                         <label class="block text-xs font-bold text-slate-600 uppercase tracking-wider">
                             เข้าสู่ระบบด่วนตามสิทธิ์ (คลิกเพื่อทดสอบทันที)
                         </label>
-                        <span class="text-[11px] text-slate-400">รหัสผ่านเริ่มต้น 123456 / 123</span>
+                        <span class="text-[11px] text-slate-400">คลิกเข้าใช้งานได้ทันที</span>
                     </div>
 
                     <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
                         <!-- Super Admin -->
-                        <button type="button" onclick="quickLogin('superadmin', '123', 'super_admin')" 
+                        <button type="button" onclick="quickLogin('superadmin', 'password123', 'super_admin')" 
                                 class="flex flex-col items-start p-3 rounded-xl border border-indigo-200 bg-indigo-50/70 hover:bg-indigo-100 text-left transition group">
                             <span class="text-xs font-bold text-indigo-900 flex items-center gap-1.5">
                                 <i data-lucide="globe-2" class="w-3.5 h-3.5 text-indigo-600"></i> Super Admin
                             </span>
-                            <span class="text-[11px] text-indigo-700 mt-1 truncate w-full">เปิดใช้สถานศึกษา SMIS</span>
+                            <span class="text-[11px] text-indigo-700 mt-1 truncate w-full">ติดตั้ง DB & สิทธิ์ SMIS</span>
                         </button>
 
                         <!-- School Admin -->

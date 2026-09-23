@@ -1159,28 +1159,218 @@
                     </p>
                 </div>
 
-                <!-- Database Auto-Update / Install Card for Super Admin -->
+                <!-- Card 1: Super Admin Credentials Management (Edit Username & Password) -->
+                <div class="bg-white p-6 rounded-3xl border border-indigo-100 shadow-sm">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100">
+                        <div class="flex items-center gap-3">
+                            <div class="p-2.5 bg-indigo-600 text-white rounded-2xl shadow-xs">
+                                <i data-lucide="user-cog" class="w-5 h-5"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-base font-bold text-slate-900 flex items-center gap-2">
+                                    ตั้งค่าบัญชีและรหัสผ่าน Super Admin
+                                    <span class="px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 text-[10px] font-bold border border-indigo-200">
+                                        ผู้ดูแลระบบสูงสุด
+                                    </span>
+                                </h3>
+                                <p class="text-xs text-slate-500">สามารถแก้ไข Username และ Password ของผู้ดูแลระบบเขตพื้นที่ฯ ได้ที่นี่</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2 text-xs">
+                            <span class="text-slate-500">สถานะรหัสผ่าน:</span>
+                            <span id="sa-pwd-status" class="px-2 py-0.5 rounded-full font-bold bg-amber-50 text-amber-700 border border-amber-200 text-[11px]">
+                                เริ่มต้น (password123)
+                            </span>
+                        </div>
+                    </div>
+
+                    <form id="superAdminCredentialsForm" onsubmit="handleSuperAdminCredentialsSubmit(event)" class="mt-4 space-y-4">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 mb-1">
+                                    Username Super Admin <span class="text-red-500">*</span>
+                                </label>
+                                <div class="relative">
+                                    <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                                        <i data-lucide="at-sign" class="w-4 h-4"></i>
+                                    </div>
+                                    <input type="text" id="sa_username" required placeholder="เช่น superadmin" 
+                                           class="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 outline-none focus:bg-white focus:border-indigo-500 transition">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 mb-1">
+                                    ชื่อ-นามสกุล Super Admin
+                                </label>
+                                <div class="relative">
+                                    <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                                        <i data-lucide="user" class="w-4 h-4"></i>
+                                    </div>
+                                    <input type="text" id="sa_name" placeholder="ผู้ดูแลระบบระดับเขตพื้นที่ฯ (Super Admin)" 
+                                           class="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 outline-none focus:bg-white focus:border-indigo-500 transition">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 mb-1">
+                                    กำหนดรหัสผ่านใหม่ (หากต้องการเปลี่ยน)
+                                </label>
+                                <div class="relative">
+                                    <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                                        <i data-lucide="key" class="w-4 h-4"></i>
+                                    </div>
+                                    <input type="password" id="sa_new_password" minlength="6" placeholder="รหัสผ่านใหม่ (อย่างน้อย 6 ตัวอักษร)" 
+                                           class="w-full pl-10 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono outline-none focus:bg-white focus:border-indigo-500 transition">
+                                    <button type="button" onclick="togglePasswordVisibility('sa_new_password')" class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600">
+                                        <i data-lucide="eye" class="w-4 h-4"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 mb-1">
+                                    ยืนยันรหัสผ่านใหม่
+                                </label>
+                                <div class="relative">
+                                    <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                                        <i data-lucide="check-circle" class="w-4 h-4"></i>
+                                    </div>
+                                    <input type="password" id="sa_confirm_password" minlength="6" placeholder="ยืนยันรหัสผ่านใหม่อีกครั้ง" 
+                                           class="w-full pl-10 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono outline-none focus:bg-white focus:border-indigo-500 transition">
+                                    <button type="button" onclick="togglePasswordVisibility('sa_confirm_password')" class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600">
+                                        <i data-lucide="eye" class="w-4 h-4"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 mb-1">ตำแหน่ง / สังกัด</label>
+                                <input type="text" id="sa_position" placeholder="ผู้อำนวยการกลุ่มนโยบายและแผน (สพป./สพฐ.)" 
+                                       class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:bg-white focus:border-indigo-500 transition">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 mb-1">เบอร์โทรศัพท์</label>
+                                <input type="text" id="sa_phone" placeholder="เช่น 0812345678" 
+                                       class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:bg-white focus:border-indigo-500 transition">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 mb-1">อีเมลติดต่อ</label>
+                                <input type="email" id="sa_email" placeholder="superadmin@obec.go.th" 
+                                       class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:bg-white focus:border-indigo-500 transition">
+                            </div>
+                        </div>
+
+                        <div id="saCredentialsAlert" class="hidden p-3 rounded-xl text-xs font-medium"></div>
+
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
+                            <span class="text-[11px] text-slate-400">
+                                * บันทึกแล้วสามารถใช้ Username และ Password ใหม่ในการเข้าสู่ระบบครั้งถัดไปได้ทันที
+                            </span>
+                            <button type="submit" id="btnSaveSaCredentials" 
+                                    class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white text-xs font-bold rounded-xl transition shadow-md shadow-indigo-500/20 flex items-center justify-center gap-2">
+                                <i data-lucide="save" class="w-4 h-4"></i>
+                                <span>บันทึกการแก้ไขบัญชี Super Admin</span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Card 2: Real Database Installation, Connection & Migration -->
                 <div class="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white p-6 rounded-3xl shadow-xl border border-indigo-500/30">
                     <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
                         <div class="space-y-1.5 max-w-2xl">
                             <div class="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[11px] font-bold border border-emerald-500/30">
                                 <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                                ระบบบริหารโครงสร้างฐานข้อมูล (Database Migrations)
+                                ศูนย์บริหารและติดตั้งฐานข้อมูลจริง (MySQL / MariaDB Migrations)
                             </div>
                             <h3 class="text-lg font-bold text-white flex items-center gap-2">
                                 <i data-lucide="database" class="w-5 h-5 text-indigo-400"></i>
-                                ติดตั้งและอัปเดตตารางฐานข้อมูลระบบอัตโนมัติ
+                                ติดตั้งและเชื่อมต่อโครงสร้างฐานข้อมูลระบบจริง
                             </h3>
                             <p class="text-xs text-slate-300 leading-relaxed">
-                                Super Admin สามารถกดปุ่มนี้เพื่อสั่งการตรวจสอบ สร้าง และอัปเดตตารางฐานข้อมูล MySQL ทั้ง 10 ตารางหลักให้ตรงตามโครงสร้างระบบล่าสุดโดยอัตโนมัติ (รองรับรหัส SMIS 8 หลัก, งบประมาณ 4 กลุ่มงาน, เงินอุดหนุนรายหัว/กพพ., แผนงานและโครงการ)
+                                สั่งการติดตั้งตาราง MySQL ทั้ง 10 ตารางหลักโดยอัตโนมัติ (ตาราง schools, users พร้อม Super Admin, student_subsidies, fiscal_years, budget_sources, department_allocations, projects, budget_items, expenses, progress_logs)
                             </p>
                         </div>
-                        <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 shrink-0 w-full md:w-auto">
+                        <div class="flex flex-wrap items-center gap-2 shrink-0 w-full md:w-auto">
+                            <button type="button" onclick="toggleDbConfigPanel()" 
+                                    class="px-3.5 py-2.5 bg-white/10 hover:bg-white/20 text-white text-xs font-bold rounded-xl border border-white/10 transition flex items-center gap-1.5">
+                                <i data-lucide="settings" class="w-3.5 h-3.5 text-indigo-300"></i>
+                                <span>ตั้งค่าการเชื่อมต่อ MySQL</span>
+                            </button>
+                            <a href="/database.sql" download="school_action_plan_database.sql"
+                               class="px-3.5 py-2.5 bg-white/10 hover:bg-white/20 text-white text-xs font-bold rounded-xl border border-white/10 transition flex items-center gap-1.5">
+                                <i data-lucide="download" class="w-3.5 h-3.5 text-emerald-300"></i>
+                                <span>ดาวน์โหลด .sql</span>
+                            </a>
                             <button id="btnInstallDb" onclick="runInstallDatabase()" 
-                                    class="px-5 py-3 bg-gradient-to-r from-indigo-500 to-blue-600 hover:from-indigo-600 hover:to-blue-700 text-white text-xs font-bold rounded-2xl shadow-lg shadow-indigo-500/25 transition-all flex items-center justify-center gap-2 active:scale-95">
+                                    class="px-5 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white text-xs font-bold rounded-xl shadow-lg shadow-emerald-500/25 transition-all flex items-center justify-center gap-2 active:scale-95">
                                 <i data-lucide="refresh-cw" class="w-4 h-4"></i>
                                 <span>ติดตั้ง / อัปเดตตารางฐานข้อมูล</span>
                             </button>
+                        </div>
+                    </div>
+
+                    <!-- MySQL Connection Configuration Panel (Collapsible) -->
+                    <div id="dbConfigPanel" class="hidden mt-5 pt-4 border-t border-indigo-500/20">
+                        <div class="bg-black/30 rounded-2xl p-4 border border-white/10">
+                            <div class="flex items-center justify-between mb-3">
+                                <h4 class="text-xs font-bold text-indigo-200 flex items-center gap-2">
+                                    <i data-lucide="server" class="w-4 h-4 text-indigo-400"></i>
+                                    กำหนดค่าเชื่อมต่อฐานข้อมูล MySQL จริง (Real MySQL Server Connection)
+                                </h4>
+                                <span id="dbConnBadge" class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-800 text-slate-300 border border-slate-700">
+                                    สถานะ: รอการทดสอบ
+                                </span>
+                            </div>
+
+                            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 text-xs">
+                                <div>
+                                    <label class="block text-slate-400 text-[11px] mb-1">Host / IP</label>
+                                    <input type="text" id="db_host" value="localhost" 
+                                           class="w-full px-3 py-2 bg-white/5 border border-white/15 rounded-xl text-white outline-none focus:border-indigo-400">
+                                </div>
+                                <div>
+                                    <label class="block text-slate-400 text-[11px] mb-1">Port</label>
+                                    <input type="number" id="db_port" value="3306" 
+                                           class="w-full px-3 py-2 bg-white/5 border border-white/15 rounded-xl text-white outline-none focus:border-indigo-400">
+                                </div>
+                                <div>
+                                    <label class="block text-slate-400 text-[11px] mb-1">ชื่อฐานข้อมูล (Database)</label>
+                                    <input type="text" id="db_name" value="school_action_plan" 
+                                           class="w-full px-3 py-2 bg-white/5 border border-white/15 rounded-xl text-white outline-none focus:border-indigo-400">
+                                </div>
+                                <div>
+                                    <label class="block text-slate-400 text-[11px] mb-1">ผู้ใช้ (User)</label>
+                                    <input type="text" id="db_user" value="root" 
+                                           class="w-full px-3 py-2 bg-white/5 border border-white/15 rounded-xl text-white outline-none focus:border-indigo-400">
+                                </div>
+                                <div>
+                                    <label class="block text-slate-400 text-[11px] mb-1">รหัสผ่าน (Password)</label>
+                                    <input type="password" id="db_pass" placeholder="เว้นว่างถ้าไม่มี" 
+                                           class="w-full px-3 py-2 bg-white/5 border border-white/15 rounded-xl text-white outline-none focus:border-indigo-400">
+                                </div>
+                            </div>
+
+                            <div class="flex flex-wrap items-center justify-between gap-3 mt-3 pt-3 border-t border-white/5">
+                                <div id="dbTestMsg" class="text-[11px] text-slate-300">
+                                    ค่านี้จะถูกบันทึกใน <code class="text-indigo-300">api/config.php</code> และ <code class="text-indigo-300">db-config.json</code>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <button type="button" onclick="testDatabaseConnection()" id="btnTestDb" 
+                                            class="px-3.5 py-1.5 bg-indigo-600/60 hover:bg-indigo-600 text-white text-xs font-semibold rounded-lg transition flex items-center gap-1.5">
+                                        <i data-lucide="activity" class="w-3.5 h-3.5"></i>
+                                        <span>ทดสอบการเชื่อมต่อ</span>
+                                    </button>
+                                    <button type="button" onclick="saveDatabaseConnection()" id="btnSaveDb" 
+                                            class="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg transition flex items-center gap-1.5">
+                                        <i data-lucide="check" class="w-3.5 h-3.5"></i>
+                                        <span>บันทึกการตั้งค่า</span>
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </div>
 

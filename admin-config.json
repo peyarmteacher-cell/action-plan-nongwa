@@ -1,0 +1,9 @@
+{
+  "username": "superadmin",
+  "password": "password123",
+  "name": "ผู้ดูแลระบบระดับเขตพื้นที่ฯ (Super Admin)",
+  "position": "ผู้อำนวยการกลุ่มนโยบายและแผน (สพป./สพฐ.)",
+  "phone": "0812345678",
+  "email": "superadmin@obec.go.th",
+  "has_custom_password": false
+}

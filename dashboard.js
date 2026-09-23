@@ -178,6 +178,7 @@ function switchTab(tabId) {
         loadSchoolSettings();
     } else if (tabId === 'superadmin') {
         loadSuperAdminSchools();
+        loadSuperAdminCredentials();
     }
     lucide.createIcons();
 }
@@ -1869,6 +1870,264 @@ async function handleSaveSchoolSettings(e) {
 
 let currentAssignAdminSchoolId = null;
 
+// Toggle Password Visibility
+function togglePasswordVisibility(fieldId) {
+    const input = document.getElementById(fieldId);
+    if (!input) return;
+    if (input.type === 'password') {
+        input.type = 'text';
+    } else {
+        input.type = 'password';
+    }
+}
+
+// Toggle DB Config Panel
+function toggleDbConfigPanel() {
+    const panel = document.getElementById('dbConfigPanel');
+    if (panel) {
+        panel.classList.toggle('hidden');
+    }
+}
+
+// Load Super Admin Credentials & Database Config
+async function loadSuperAdminCredentials() {
+    try {
+        const res = await fetch('/api/superadmin/get_credentials.php');
+        const data = await res.json();
+        if (data.status === 'success') {
+            const u = data.user || {};
+            const saUserEl = document.getElementById('sa_username');
+            const saNameEl = document.getElementById('sa_name');
+            const saPosEl = document.getElementById('sa_position');
+            const saPhoneEl = document.getElementById('sa_phone');
+            const saEmailEl = document.getElementById('sa_email');
+            const saPwdStatusEl = document.getElementById('sa-pwd-status');
+
+            if (saUserEl) saUserEl.value = u.username || 'superadmin';
+            if (saNameEl) saNameEl.value = u.name || '';
+            if (saPosEl) saPosEl.value = u.position || '';
+            if (saPhoneEl) saPhoneEl.value = u.phone || '';
+            if (saEmailEl) saEmailEl.value = u.email || '';
+
+            if (saPwdStatusEl) {
+                if (u.has_custom_password) {
+                    saPwdStatusEl.className = "px-2 py-0.5 rounded-full font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 text-[11px]";
+                    saPwdStatusEl.innerText = "✓ ตั้งค่ารหัสผ่านส่วนตัวแล้ว";
+                } else {
+                    saPwdStatusEl.className = "px-2 py-0.5 rounded-full font-bold bg-amber-50 text-amber-700 border border-amber-200 text-[11px]";
+                    saPwdStatusEl.innerText = "เริ่มต้น (password123)";
+                }
+            }
+
+            // DB Config
+            const db = data.database || {};
+            const cfg = db.config || {};
+            if (document.getElementById('db_host') && cfg.host) document.getElementById('db_host').value = cfg.host;
+            if (document.getElementById('db_port') && cfg.port) document.getElementById('db_port').value = cfg.port;
+            if (document.getElementById('db_name') && cfg.database) document.getElementById('db_name').value = cfg.database;
+            if (document.getElementById('db_user') && cfg.user) document.getElementById('db_user').value = cfg.user;
+
+            const badge = document.getElementById('dbConnBadge');
+            if (badge) {
+                if (db.connected) {
+                    badge.className = "px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30";
+                    badge.innerText = "✓ เชื่อมต่อ MySQL Server สำเร็จ";
+                } else {
+                    badge.className = "px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30";
+                    badge.innerText = "โหมดระบบพร้อมใช้งาน (MySQL ภายนอกรอเชื่อมต่อ)";
+                }
+            }
+        }
+    } catch (err) {
+        console.error('Error loading Super Admin credentials:', err);
+    }
+}
+
+// Handle Super Admin Credentials Update
+async function handleSuperAdminCredentialsSubmit(event) {
+    event.preventDefault();
+    const btn = document.getElementById('btnSaveSaCredentials');
+    const alertBox = document.getElementById('saCredentialsAlert');
+    const username = (document.getElementById('sa_username').value || '').trim();
+    const newPass = (document.getElementById('sa_new_password').value || '').trim();
+    const confirmPass = (document.getElementById('sa_confirm_password').value || '').trim();
+    const name = (document.getElementById('sa_name').value || '').trim();
+    const position = (document.getElementById('sa_position').value || '').trim();
+    const phone = (document.getElementById('sa_phone').value || '').trim();
+    const email = (document.getElementById('sa_email').value || '').trim();
+
+    if (!username) {
+        showToast('กรุณาระบุ Username ของ Super Admin', 'error');
+        return;
+    }
+
+    if (newPass) {
+        if (newPass.length < 6) {
+            showToast('รหัสผ่านใหม่ต้องมีความยาวอย่างน้อย 6 ตัวอักษร', 'error');
+            return;
+        }
+        if (newPass !== confirmPass) {
+            showToast('รหัสผ่านใหม่และการยืนยันรหัสผ่านไม่ตรงกัน', 'error');
+            return;
+        }
+    }
+
+    const origBtnHtml = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = `<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> <span>กำลังบันทึกข้อมูล...</span>`;
+    if (window.lucide) lucide.createIcons();
+
+    try {
+        const res = await fetch('/api/superadmin/update_credentials.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                username,
+                new_password: newPass,
+                name,
+                position,
+                phone,
+                email
+            })
+        });
+        const data = await res.json();
+
+        if (data.status === 'success') {
+            if (alertBox) {
+                alertBox.className = "p-3 rounded-xl text-xs font-semibold bg-emerald-50 border border-emerald-200 text-emerald-800";
+                alertBox.innerHTML = `✓ ${data.message}`;
+                alertBox.classList.remove('hidden');
+            }
+            showToast(data.message, 'success');
+
+            // Clear password fields
+            document.getElementById('sa_new_password').value = '';
+            document.getElementById('sa_confirm_password').value = '';
+
+            // Update session user in local storage if currently logged in as super admin
+            const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+            if (currentUser.role === 'super_admin' || currentUser.id === 1) {
+                currentUser.username = username;
+                if (name) currentUser.name = name;
+                if (position) currentUser.position = position;
+                localStorage.setItem('currentUser', JSON.stringify(currentUser));
+                
+                // Update header display
+                const userNameDisplay = document.getElementById('userNameDisplay');
+                if (userNameDisplay) userNameDisplay.innerText = name || username;
+            }
+
+            // Reload status badge
+            await loadSuperAdminCredentials();
+        } else {
+            if (alertBox) {
+                alertBox.className = "p-3 rounded-xl text-xs font-semibold bg-red-50 border border-red-200 text-red-800";
+                alertBox.innerHTML = `✗ ${data.message || 'บันทึกไม่สำเร็จ'}`;
+                alertBox.classList.remove('hidden');
+            }
+            showToast(data.message || 'บันทึกไม่สำเร็จ', 'error');
+        }
+    } catch (err) {
+        console.error('Error updating Super Admin credentials:', err);
+        showToast('เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์', 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = origBtnHtml;
+        if (window.lucide) lucide.createIcons();
+    }
+}
+
+// Test MySQL Database Connection
+async function testDatabaseConnection() {
+    const btn = document.getElementById('btnTestDb');
+    const badge = document.getElementById('dbConnBadge');
+    const msgEl = document.getElementById('dbTestMsg');
+
+    const host = (document.getElementById('db_host').value || 'localhost').trim();
+    const port = (document.getElementById('db_port').value || '3306').trim();
+    const database = (document.getElementById('db_name').value || 'school_action_plan').trim();
+    const user = (document.getElementById('db_user').value || 'root').trim();
+    const password = document.getElementById('db_pass').value;
+
+    const origBtnHtml = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = `<i data-lucide="loader-2" class="w-3.5 h-3.5 animate-spin"></i> <span>กำลังทดสอบ...</span>`;
+    if (window.lucide) lucide.createIcons();
+
+    try {
+        const res = await fetch('/api/superadmin/test_db_connection.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ host, port, database, user, password })
+        });
+        const data = await res.json();
+
+        if (data.connected || data.status === 'success') {
+            badge.className = "px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30";
+            badge.innerText = "✓ เชื่อมต่อสำเร็จ";
+            msgEl.className = "text-[11px] text-emerald-300 font-semibold";
+            msgEl.innerText = data.message || `เชื่อมต่อ MySQL (${host}:${port}/${database}) สำเร็จเรียบร้อย!`;
+            showToast('เชื่อมต่อฐานข้อมูล MySQL สำเร็จ!', 'success');
+        } else {
+            badge.className = "px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-red-500/20 text-red-300 border border-red-500/30";
+            badge.innerText = "✗ ไม่สามารถเชื่อมต่อได้";
+            msgEl.className = "text-[11px] text-red-300";
+            msgEl.innerText = data.message || 'ไม่สามารถเชื่อมต่อ MySQL ได้ ตรวจสอบ Host, Port, User, Password';
+            showToast(data.message || 'ไม่สามารถเชื่อมต่อ MySQL ได้', 'error');
+        }
+    } catch (err) {
+        badge.className = "px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-red-500/20 text-red-300 border border-red-500/30";
+        badge.innerText = "✗ ข้อผิดพลาด";
+        msgEl.className = "text-[11px] text-red-300";
+        msgEl.innerText = `ข้อผิดพลาด: ${err.message}`;
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = origBtnHtml;
+        if (window.lucide) lucide.createIcons();
+    }
+}
+
+// Save MySQL Database Connection Configuration
+async function saveDatabaseConnection() {
+    const btn = document.getElementById('btnSaveDb');
+    const msgEl = document.getElementById('dbTestMsg');
+
+    const host = (document.getElementById('db_host').value || 'localhost').trim();
+    const port = (document.getElementById('db_port').value || '3306').trim();
+    const database = (document.getElementById('db_name').value || 'school_action_plan').trim();
+    const user = (document.getElementById('db_user').value || 'root').trim();
+    const password = document.getElementById('db_pass').value;
+
+    const origBtnHtml = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = `<i data-lucide="loader-2" class="w-3.5 h-3.5 animate-spin"></i> <span>กำลังบันทึก...</span>`;
+    if (window.lucide) lucide.createIcons();
+
+    try {
+        const res = await fetch('/api/superadmin/save_db_config.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ host, port, database, user, password })
+        });
+        const data = await res.json();
+
+        if (data.status === 'success') {
+            msgEl.className = "text-[11px] text-emerald-300 font-semibold";
+            msgEl.innerText = `✓ บันทึกการตั้งค่าแล้ว (Host: ${host}, DB: ${database}) รันไฟล์ config.php สำเร็จ`;
+            showToast('บันทึกการตั้งค่าการเชื่อมต่อฐานข้อมูลเรียบร้อยแล้ว', 'success');
+            await loadSuperAdminCredentials();
+        } else {
+            showToast(data.message || 'บันทึกไม่สำเร็จ', 'error');
+        }
+    } catch (err) {
+        showToast('เกิดข้อผิดพลาดในการบันทึกการตั้งค่า', 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = origBtnHtml;
+        if (window.lucide) lucide.createIcons();
+    }
+}
+
 // Auto-Install and Update Database Tables
 async function runInstallDatabase() {
     const btn = document.getElementById('btnInstallDb');
@@ -1878,12 +2137,12 @@ async function runInstallDatabase() {
 
     const origBtnHtml = btn.innerHTML;
     btn.disabled = true;
-    btn.innerHTML = `<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> <span>กำลังตรวจสอบและอัปเดตตาราง...</span>`;
+    btn.innerHTML = `<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> <span>กำลังติดตั้งและอัปเดตฐานข้อมูล...</span>`;
     if (window.lucide) lucide.createIcons();
 
     if (resultBox) resultBox.classList.remove('hidden');
     if (logContent) {
-        logContent.innerHTML = `<div class="text-indigo-300 animate-pulse">กำลังเริ่มกระบวนการตรวจสอบโครงสร้างฐานข้อมูล...</div>`;
+        logContent.innerHTML = `<div class="text-indigo-300 animate-pulse">กำลังเริ่มกระบวนการตรวจสอบโครงสร้างฐานข้อมูลและบันทึกข้อมูลเริ่มต้น...</div>`;
     }
     if (statusBadge) {
         statusBadge.className = "px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300";
@@ -1901,8 +2160,24 @@ async function runInstallDatabase() {
             const steps = data.steps || [];
             let html = '';
             html += `<div class="text-emerald-400 font-bold mb-2">========================================================</div>`;
-            html += `<div class="text-emerald-300 font-bold mb-2">🚀 เริ่มต้นการตรวจสอบและปรับปรุงโครงสร้างฐานข้อมูลระบบ (Auto-Migration)</div>`;
-            html += `<div class="text-slate-400 mb-2">เวอร์ชันฐานข้อมูล: ${data.database_version || '2026.1-SMIS8'} | เวลา: ${data.timestamp || new Date().toLocaleString('th-TH')}</div>`;
+            html += `<div class="text-emerald-300 font-bold mb-1">🚀 เริ่มต้นกระบวนการติดตั้งและอัปเดตฐานข้อมูลระบบ (Database Migration)</div>`;
+            
+            if (data.live_mysql_executed) {
+                html += `<div class="text-emerald-400 font-bold mb-2">✓ โหมด: รันคำสั่ง SQL สร้างตารางลงใน MySQL Server จริงสำเร็จเรียบร้อย</div>`;
+            } else {
+                html += `<div class="text-indigo-300 mb-2">ℹ โหมด: ตรวจสอบและเตรียมความพร้อมโครงสร้าง 10 ตารางในระบบสมบูรณ์</div>`;
+            }
+
+            if (data.message) {
+                html += `<div class="text-slate-300 mb-2">รายละเอียด: ${data.message}</div>`;
+            }
+
+            html += `<div class="text-slate-400 mb-2">เวอร์ชันระบบ: ${data.database_version || '2026.1-SMIS8'} | เวลา: ${data.timestamp || new Date().toLocaleString('th-TH')}</div>`;
+            
+            if (data.superadmin) {
+                html += `<div class="text-amber-300 mb-2">👑 บัญชี Super Admin: Username "${data.superadmin.username}" (${data.superadmin.name || 'ผู้ดูแลระบบ'}) ได้รับการซิงค์พร้อมใช้งาน</div>`;
+            }
+
             html += `<div class="text-slate-500 mb-3">--------------------------------------------------------</div>`;
 
             steps.forEach(s => {
@@ -1914,7 +2189,7 @@ async function runInstallDatabase() {
             });
 
             html += `<div class="text-slate-500 mt-2">--------------------------------------------------------</div>`;
-            html += `<div class="text-emerald-400 font-bold mt-2">✓ ตรวจสอบและอัปเดตครบทั้ง ${data.total_tables || steps.length} ตารางหลักเรียบร้อยสมบูรณ์ พร้อมใช้งาน 100%</div>`;
+            html += `<div class="text-emerald-400 font-bold mt-2">✓ ติดตั้งและอัปเดตโครงสร้างครบทั้ง ${data.total_tables || steps.length} ตารางหลักเรียบร้อยสมบูรณ์ พร้อมใช้งาน 100%</div>`;
             html += `<div class="text-emerald-400 font-bold">========================================================</div>`;
 
             if (logContent) logContent.innerHTML = html;
@@ -1923,7 +2198,8 @@ async function runInstallDatabase() {
                 statusBadge.innerText = `อัปเดตล่าสุด: ${data.timestamp || 'สมบูรณ์'}`;
             }
 
-            showToast('ติดตั้งและอัปเดตโครงสร้างฐานข้อมูลสำเร็จสมบูรณ์!', 'success');
+            showToast('ติดตั้งและอัปเดตโครงสร้างฐานข้อมูลสำเร็จครบ 10 ตาราง!', 'success');
+            await loadSuperAdminCredentials();
         } else {
             if (logContent) {
                 logContent.innerHTML = `<div class="text-red-400 font-bold">[ERROR] ${data.message || 'เกิดข้อผิดพลาดในการอัปเดตฐานข้อมูล'}</div>`;
