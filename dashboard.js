@@ -1886,13 +1886,21 @@ function toggleDbConfigPanel() {
     const panel = document.getElementById('dbConfigPanel');
     if (panel) {
         panel.classList.toggle('hidden');
+        if (!panel.classList.contains('hidden')) {
+            panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
     }
 }
+window.toggleDbConfigPanel = toggleDbConfigPanel;
 
 // Load Super Admin Credentials & Database Config
 async function loadSuperAdminCredentials() {
     try {
         const res = await fetch('/api/superadmin/get_credentials.php');
+        if (!res.ok) {
+            console.warn('Super Admin credentials API returned HTTP', res.status);
+            return;
+        }
         const data = await res.json();
         if (data.status === 'success') {
             const u = data.user || {};
@@ -1942,6 +1950,7 @@ async function loadSuperAdminCredentials() {
         console.error('Error loading Super Admin credentials:', err);
     }
 }
+window.loadSuperAdminCredentials = loadSuperAdminCredentials;
 
 // Handle Super Admin Credentials Update
 async function handleSuperAdminCredentialsSubmit(event) {
@@ -2226,6 +2235,10 @@ async function runInstallDatabase() {
 async function loadSuperAdminSchools() {
     try {
         const res = await fetch('/api/superadmin/get_schools.php');
+        if (!res.ok) {
+            console.warn('Super Admin schools API returned HTTP', res.status);
+            return;
+        }
         const result = await res.json();
         if (result.status === 'success') {
             const schools = result.schools || result.data || [];
@@ -2326,6 +2339,11 @@ async function loadSuperAdminSchools() {
         console.error('Error loading superadmin schools:', err);
     }
 }
+window.loadSuperAdminSchools = loadSuperAdminSchools;
+window.testDatabaseConnection = testDatabaseConnection;
+window.saveDatabaseConnection = saveDatabaseConnection;
+window.runInstallDatabase = runInstallDatabase;
+window.handleSuperAdminCredentialsSubmit = handleSuperAdminCredentialsSubmit;
 
 // Super Admin: Open New School (No school admin required!)
 async function handleSuperAdminAddSchool(e) {
