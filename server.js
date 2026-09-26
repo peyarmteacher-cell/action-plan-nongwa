@@ -54,28 +54,110 @@ if (fs.existsSync(adminConfigFile)) {
   }
 }
 
+// ==========================================
+// PHP Session & Authentication Store
+// ==========================================
+const serverSessions = new Map();
+
+function parseCookies(req) {
+  const list = {};
+  const cookieHeader = req.headers.cookie;
+  if (!cookieHeader) return list;
+  cookieHeader.split(';').forEach(cookie => {
+    let [name, ...rest] = cookie.split('=');
+    name = name?.trim();
+    if (!name) return;
+    const value = rest.join('=').trim();
+    list[name] = decodeURIComponent(value);
+  });
+  return list;
+}
+
+function getSession(req) {
+  const cookies = parseCookies(req);
+  if (cookies.PHPSESSID && serverSessions.has(cookies.PHPSESSID)) {
+    return serverSessions.get(cookies.PHPSESSID);
+  }
+  return null;
+}
+
+let dbPool = null;
+
+function getDbPool() {
+  if (!dbPool) {
+    dbPool = mysql.createPool({
+      host: dbConfig.host,
+      port: parseInt(dbConfig.port) || 3306,
+      user: dbConfig.user,
+      password: dbConfig.password,
+      database: dbConfig.database,
+      waitForConnections: true,
+      connectionLimit: 10,
+      queueLimit: 0,
+      connectTimeout: 4000
+    });
+  }
+  return dbPool;
+}
+
+function resetDbPool() {
+  if (dbPool) {
+    try {
+      dbPool.end();
+    } catch (e) {}
+    dbPool = null;
+  }
+}
+
+async function isDbReady() {
+  try {
+    const pool = getDbPool();
+    const [rows] = await pool.query("SHOW TABLES LIKE 'projects'");
+    return Array.isArray(rows) && rows.length > 0;
+  } catch (e) {
+    return false;
+  }
+}
+
 async function testMySqlConnection(cfg = dbConfig) {
   try {
-    const connection = await mysql.createConnection({
-      host: cfg.host,
-      port: parseInt(cfg.port) || 3306,
-      user: cfg.user,
-      password: cfg.password,
-      connectTimeout: 800
-    });
-    // Ensure database exists
-    await connection.query(`CREATE DATABASE IF NOT EXISTS \`${cfg.database}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
-    await connection.changeUser({ database: cfg.database });
-    await connection.end();
-    return { connected: true, message: `เชื่อมต่อกับ MySQL Server (${cfg.host}:${cfg.port}/${cfg.database}) สำเร็จเรียบร้อย` };
+    const port = parseInt(cfg.port) || 3306;
+    // 1. Try connecting directly to target database
+    try {
+      const conn = await mysql.createConnection({
+        host: cfg.host,
+        port: port,
+        user: cfg.user,
+        password: cfg.password,
+        database: cfg.database,
+        connectTimeout: 4000
+      });
+      await conn.end();
+      return { connected: true, message: `เชื่อมต่อกับ MySQL Server (${cfg.host}:${port}) และเข้าถึงฐานข้อมูล \`${cfg.database}\` สำเร็จเรียบร้อย` };
+    } catch (dbErr) {
+      // If DB does not exist, try connecting without DB and create it if allowed
+      if (dbErr.code === 'ER_BAD_DB_ERROR' || dbErr.errno === 1049) {
+        const rootConn = await mysql.createConnection({
+          host: cfg.host,
+          port: port,
+          user: cfg.user,
+          password: cfg.password,
+          connectTimeout: 4000
+        });
+        await rootConn.query(`CREATE DATABASE IF NOT EXISTS \`${cfg.database}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
+        await rootConn.end();
+        return { connected: true, message: `เชื่อมต่อกับ MySQL Server (${cfg.host}:${port}) และสร้างฐานข้อมูล \`${cfg.database}\` สำเร็จเรียบร้อย` };
+      }
+      throw dbErr;
+    }
   } catch (err) {
     return { connected: false, message: `ไม่สามารถเชื่อมต่อ MySQL ได้: ${err.message}` };
   }
 }
 
-// Exclude /api routes from static file serving
+// Exclude /api routes and .php files from raw static file serving
 app.use((req, res, next) => {
-  if (req.path.startsWith('/api/')) {
+  if (req.path.startsWith('/api/') || req.path.endsWith('.php') || req.path === '/') {
     return next();
   }
   express.static(__dirname)(req, res, next);
@@ -759,8 +841,34 @@ app.post('/api/login.php', (req, res) => {
     const isUsingDefaultPassword = (cleanP === '123456' || cleanP === '123' || user.password === '123456' || user.password === '123');
     const mustChange = user.must_change_password === 1 || (isUsingDefaultPassword && user.must_change_password !== 0 && user.role !== 'super_admin');
 
+    // Create real server-side session and cookie
+    const sessionId = 'phpsess_' + Date.now() + '_' + Math.random().toString(36).substring(2, 10);
+    const sessionData = {
+      user_id: user.id,
+      username: user.username,
+      id_card: user.id_card || '',
+      name: user.name,
+      role: user.role,
+      department: user.department,
+      position: user.position,
+      school_id: userSchool.id,
+      school_name: userSchool.name,
+      smis_code: userSchool.smis_code || '10310001',
+      school_logo: userSchool.logo_url || '',
+      affiliation: userSchool.affiliation || 'สำนักงานเขตพื้นที่การศึกษาประถมศึกษาบุรีรัมย์ เขต 1',
+      director_name: userSchool.director_name || '',
+      current_fiscal_year: '2568'
+    };
+    serverSessions.set(sessionId, sessionData);
+
+    res.setHeader('Set-Cookie', `PHPSESSID=${sessionId}; Path=/; HttpOnly; SameSite=Lax`);
+
+    // Requirement 1 & 7: super_admin -> super_admin.php, others -> dashboard.php
+    const redirectTarget = (user.role === 'super_admin') ? 'super_admin.php' : 'dashboard.php';
+
     res.json({
       status: 'success',
+      redirect: redirectTarget,
       user: {
         id: user.id,
         username: user.username,
@@ -1050,6 +1158,7 @@ try {
     console.error('Failed to write api/config.php:', err);
   }
 
+  resetDbPool();
   const testResult = await testMySqlConnection(dbConfig);
 
   res.json({
@@ -1304,11 +1413,16 @@ app.post('/api/superadmin/install_database.php', async (req, res) => {
     `);
 
     await conn.end();
+    resetDbPool();
     liveExecution = true;
     liveMessage = `เชื่อมต่อและติดตั้งโครงสร้างฐานข้อมูลลงบน MySQL Server จริง (${dbConfig.host}:${dbConfig.port}/${dbConfig.database}) สำเร็จเรียบร้อย พร้อมอัปเดต Super Admin บัญชี "${adminUser.username}"`;
   } catch (err) {
-    liveExecution = false;
-    liveMessage = `โหมดจำลองระบบพร้อมใช้งาน (MySQL ภายนอก: ${err.message}) - โครงสร้างตารางและบัญชี Super Admin ได้รับการติดตั้งและตรวจสอบความถูกต้องครบถ้วนในระบบแล้ว`;
+    console.error('Database migration failed:', err);
+    return res.status(500).json({
+      status: 'error',
+      live_mysql_executed: false,
+      message: `เกิดข้อผิดพลาดในการเชื่อมต่อหรือติดตั้งฐานข้อมูล MySQL: ${err.message}`
+    });
   }
 
   const steps = [
@@ -1606,6 +1720,116 @@ app.post('/api/superadmin/assign_admin.php', (req, res) => {
 });
 
 // ==========================================
+// Super Admin & School Admin: User Approvals & Management
+// ==========================================
+
+app.get('/api/get_pending_users.php', async (req, res) => {
+  if (await isDbReady()) {
+    try {
+      const pool = getDbPool();
+      const [rows] = await pool.query(`
+        SELECT u.*, s.name as school_name, s.smis_code 
+        FROM users u 
+        LEFT JOIN schools s ON u.school_id = s.id 
+        WHERE u.is_approved = 0 
+        ORDER BY u.id DESC
+      `);
+      return res.json(rows);
+    } catch (e) {
+      console.error('Error fetching pending users from DB:', e.message);
+    }
+  }
+
+  // In-memory fallback
+  const pending = users.filter(u => u.is_approved === 0 || u.is_approved === false).map(u => {
+    const s = schools.find(sch => sch.id === u.school_id);
+    return {
+      ...u,
+      school_name: s ? s.name : 'โรงเรียนอนุบาลพัฒนาวิทยา',
+      smis_code: s ? s.smis_code : '10310001'
+    };
+  });
+  res.json(pending);
+});
+
+app.post('/api/approve_user.php', async (req, res) => {
+  const { user_id, role } = req.body;
+  const uId = parseInt(user_id);
+  const assignedRole = role || 'teacher';
+
+  if (await isDbReady()) {
+    try {
+      const pool = getDbPool();
+      await pool.query('UPDATE users SET is_approved = 1, role = ? WHERE id = ?', [assignedRole, uId]);
+    } catch (e) {
+      console.error('Error approving user in DB:', e.message);
+    }
+  }
+
+  const user = users.find(u => u.id === uId);
+  if (user) {
+    user.is_approved = 1;
+    user.role = assignedRole;
+  }
+  res.json({ status: 'success', message: 'อนุมัติผู้ใช้งานสำเร็จแล้ว' });
+});
+
+app.post('/api/reject_user.php', async (req, res) => {
+  const { user_id } = req.body;
+  const uId = parseInt(user_id);
+
+  if (await isDbReady()) {
+    try {
+      const pool = getDbPool();
+      await pool.query('DELETE FROM users WHERE id = ? AND is_approved = 0', [uId]);
+    } catch (e) {
+      console.error('Error rejecting user in DB:', e.message);
+    }
+  }
+
+  const idx = users.findIndex(u => u.id === uId && (u.is_approved === 0 || u.is_approved === false));
+  if (idx !== -1) {
+    users.splice(idx, 1);
+  }
+  res.json({ status: 'success', message: 'ปฏิเสธคำขอสมัครและลบข้อมูลสำเร็จแล้ว' });
+});
+
+app.get('/api/superadmin/get_all_users.php', async (req, res) => {
+  if (await isDbReady()) {
+    try {
+      const pool = getDbPool();
+      const [rows] = await pool.query(`
+        SELECT u.id, u.username, u.name, u.role, u.department, u.position, u.phone, u.email, u.is_approved, u.id_card, s.name as school_name, s.smis_code 
+        FROM users u 
+        LEFT JOIN schools s ON u.school_id = s.id 
+        ORDER BY u.id ASC
+      `);
+      return res.json({ status: 'success', users: rows });
+    } catch (e) {
+      console.error('Error getting all users from DB:', e.message);
+    }
+  }
+
+  const userList = users.map(u => {
+    const s = schools.find(sch => sch.id === u.school_id);
+    return {
+      ...u,
+      school_name: s ? s.name : 'โรงเรียนอนุบาลพัฒนาวิทยา',
+      smis_code: s ? s.smis_code : '10310001'
+    };
+  });
+  res.json({ status: 'success', users: userList });
+});
+
+app.get('/api/auth/session.php', (req, res) => {
+  const session = getSession(req);
+  if (!session) {
+    return res.status(401).json({ status: 'unauthenticated' });
+  }
+  res.json({ status: 'authenticated', user: session });
+});
+
+// ==========================================
 // Plan Officer: Student Counts & Subsidies Calculator
 // ==========================================
 
@@ -1715,7 +1939,144 @@ app.post('/api/plan/apply_subsidies_to_budget.php', (req, res) => {
 // ==========================================
 
 // 1. Get All Plan Data for selected Fiscal Year
-app.get('/api/plan/get_data.php', (req, res) => {
+app.get('/api/plan/get_data.php', async (req, res) => {
+  try {
+    const dbReady = await isDbReady();
+    if (dbReady) {
+      const pool = getDbPool();
+      const [fYears] = await pool.query("SELECT * FROM fiscal_years ORDER BY is_current DESC, year DESC");
+      let activeFiscalYears = fYears;
+      if (activeFiscalYears.length === 0) {
+        await pool.query("INSERT INTO fiscal_years (school_id, year, start_date, end_date, is_current, status) VALUES (1, '2568', '2024-10-01', '2025-09-30', 1, 'active')");
+        const [seededYears] = await pool.query("SELECT * FROM fiscal_years ORDER BY year DESC");
+        activeFiscalYears = seededYears;
+      }
+
+      const selectedYearId = parseInt(req.query.year_id) || (activeFiscalYears.find(y => y.is_current === 1)?.id || activeFiscalYears[0].id);
+      const currentFiscalYear = activeFiscalYears.find(y => y.id === selectedYearId) || activeFiscalYears[0];
+
+      const [schoolsRow] = await pool.query("SELECT * FROM schools LIMIT 1");
+      const currentSchool = schoolsRow.length > 0 ? schoolsRow[0] : schoolInfo;
+
+      const [sources] = await pool.query("SELECT * FROM budget_sources WHERE fiscal_year_id = ? ORDER BY id ASC", [selectedYearId]);
+      const totalBudgetReceived = sources.reduce((sum, s) => sum + parseFloat(s.amount || 0), 0);
+
+      let [allocations] = await pool.query("SELECT * FROM department_allocations WHERE fiscal_year_id = ? ORDER BY id ASC", [selectedYearId]);
+      if (allocations.length === 0) {
+        const defaultDepts = [
+          { dept: 'academic', name: 'กลุ่มบริหารวิชาการ', pct: 40.00 },
+          { dept: 'budget', name: 'กลุ่มบริหารงบประมาณและสินทรัพย์', pct: 20.00 },
+          { dept: 'personnel', name: 'กลุ่มบริหารงานบุคคล', pct: 15.00 },
+          { dept: 'general', name: 'กลุ่มบริหารทั่วไป', pct: 15.00 },
+          { dept: 'reserve', name: 'งบสำรองจ่าย/ส่วนกลาง', pct: 10.00 }
+        ];
+        for (const d of defaultDepts) {
+          await pool.query("INSERT INTO department_allocations (fiscal_year_id, department, department_name, percentage, allocated_amount) VALUES (?, ?, ?, ?, ?)", [
+            selectedYearId, d.dept, d.name, d.pct, (totalBudgetReceived * d.pct) / 100
+          ]);
+        }
+        const [reAlloc] = await pool.query("SELECT * FROM department_allocations WHERE fiscal_year_id = ? ORDER BY id ASC", [selectedYearId]);
+        allocations = reAlloc;
+      }
+      const totalPercentAllocated = allocations.reduce((sum, a) => sum + parseFloat(a.percentage || 0), 0);
+      const totalAllocatedAmount = allocations.reduce((sum, a) => sum + parseFloat(a.allocated_amount || 0), 0);
+
+      const [dbProjects] = await pool.query(`
+        SELECT p.*, bs.name as budget_source_name, u.name as proposer_name 
+        FROM projects p 
+        LEFT JOIN budget_sources bs ON p.budget_source_id = bs.id 
+        LEFT JOIN users u ON p.proposer_id = u.id 
+        WHERE p.fiscal_year_id = ? 
+        ORDER BY p.id ASC
+      `, [selectedYearId]);
+
+      const [allExpenses] = await pool.query("SELECT * FROM project_expenses ORDER BY expense_date DESC, id DESC");
+
+      const yearProjects = dbProjects.map(p => {
+        const pExpenses = allExpenses.filter(e => e.project_id === p.id);
+        const approved = parseFloat(p.approved_budget) || 0;
+        const requested = parseFloat(p.requested_budget) || 0;
+        const spent = pExpenses.reduce((sum, e) => sum + parseFloat(e.amount || 0), 0);
+        const baseline = approved > 0 ? approved : requested;
+        const remaining = baseline - spent;
+        const percentSpent = baseline > 0 ? Math.min(100, Math.round((spent / baseline) * 100)) : 0;
+        return {
+          ...p,
+          financials: {
+            requested,
+            approved,
+            spent,
+            remaining,
+            percentSpent,
+            expenseCount: pExpenses.length,
+            expenses: pExpenses
+          }
+        };
+      });
+
+      const [dbUsers] = await pool.query("SELECT id, name, position, role, department, username, phone, email FROM users ORDER BY id ASC");
+
+      const totalProjectsCount = yearProjects.length;
+      const approvedProjects = yearProjects.filter(p => p.status === 'approved');
+      const totalApprovedBudget = approvedProjects.reduce((sum, p) => sum + parseFloat(p.approved_budget || 0), 0);
+      const totalSpentAcrossAll = yearProjects.reduce((sum, p) => sum + p.financials.spent, 0);
+      const netRemainingSchoolBudget = totalBudgetReceived - totalSpentAcrossAll;
+      const approvedRemainingBudget = totalApprovedBudget - totalSpentAcrossAll;
+
+      const deptSummary = {
+        academic: { name: 'กลุ่มบริหารวิชาการ', allocated: 0, approved: 0, spent: 0, projectCount: 0 },
+        budget: { name: 'กลุ่มบริหารงบประมาณ', allocated: 0, approved: 0, spent: 0, projectCount: 0 },
+        personnel: { name: 'กลุ่มบริหารงานบุคคล', allocated: 0, approved: 0, spent: 0, projectCount: 0 },
+        general: { name: 'กลุ่มบริหารทั่วไป', allocated: 0, approved: 0, spent: 0, projectCount: 0 },
+        reserve: { name: 'งบสำรองจ่าย/ส่วนกลาง', allocated: 0, approved: 0, spent: 0, projectCount: 0 }
+      };
+
+      allocations.forEach(a => {
+        if (deptSummary[a.department]) {
+          deptSummary[a.department].allocated = parseFloat(a.allocated_amount || 0);
+        }
+      });
+
+      yearProjects.forEach(p => {
+        if (deptSummary[p.department]) {
+          deptSummary[p.department].projectCount++;
+          if (p.status === 'approved') {
+            deptSummary[p.department].approved += parseFloat(p.approved_budget || 0);
+          }
+          deptSummary[p.department].spent += p.financials.spent;
+        }
+      });
+
+      return res.json({
+        status: 'success',
+        live_mysql: true,
+        school: currentSchool,
+        schools: schoolsRow.length > 0 ? schoolsRow : [currentSchool],
+        fiscalYears: activeFiscalYears,
+        currentFiscalYear: currentFiscalYear,
+        budgetSources: sources,
+        departmentAllocations: allocations,
+        projects: yearProjects,
+        users: dbUsers,
+        summary: {
+          totalBudgetReceived,
+          totalPercentAllocated,
+          totalAllocatedAmount,
+          totalProjectsCount,
+          approvedProjectsCount: approvedProjects.length,
+          totalApprovedBudget,
+          totalSpentAcrossAll,
+          netRemainingSchoolBudget,
+          approvedRemainingBudget,
+          disbursementRate: totalApprovedBudget > 0 ? ((totalSpentAcrossAll / totalApprovedBudget) * 100).toFixed(1) : '0.0',
+          departmentBreakdown: deptSummary
+        }
+      });
+    }
+  } catch (dbErr) {
+    console.warn('MySQL read failed, falling back to memory state:', dbErr.message);
+  }
+
   const selectedYearId = parseInt(req.query.year_id) || (fiscalYears.find(y => y.is_current === 1)?.id || 1);
   const currentFiscalYear = fiscalYears.find(y => y.id === selectedYearId) || fiscalYears[0];
   const subsidiesCalc = calculateSubsidies(selectedYearId);
@@ -1859,7 +2220,7 @@ app.post('/api/plan/save_fiscal_year.php', (req, res) => {
 });
 
 // 3. Save / Delete Budget Source
-app.post('/api/plan/save_budget_source.php', (req, res) => {
+app.post('/api/plan/save_budget_source.php', async (req, res) => {
   const { id, fiscal_year_id, code, name, category, amount, description, received_date } = req.body;
   if (!name || amount === undefined) {
     return res.status(400).json({ status: 'error', message: 'กรุณากรอกชื่อแหล่งงบประมาณและจำนวนเงิน' });
@@ -1867,6 +2228,27 @@ app.post('/api/plan/save_budget_source.php', (req, res) => {
 
   const numAmount = parseFloat(amount) || 0;
   const fId = parseInt(fiscal_year_id) || 1;
+
+  try {
+    if (await isDbReady()) {
+      const pool = getDbPool();
+      if (id) {
+        await pool.query(`
+          UPDATE budget_sources 
+          SET name = ?, code = ?, category = ?, amount = ?, description = ?, received_date = ?
+          WHERE id = ?
+        `, [name, code || '', category || 'subsidy', numAmount, description || '', received_date || null, parseInt(id)]);
+      } else {
+        await pool.query(`
+          INSERT INTO budget_sources (fiscal_year_id, name, code, category, amount, description, received_date)
+          VALUES (?, ?, ?, ?, ?, ?, ?)
+        `, [fId, name, code || '', category || 'subsidy', numAmount, description || '', received_date || null]);
+      }
+      return res.json({ status: 'success', message: 'บันทึกแหล่งงบประมาณลงใน MySQL เรียบร้อย' });
+    }
+  } catch (err) {
+    return res.status(500).json({ status: 'error', message: 'บันทึกแหล่งงบประมาณลง MySQL ไม่สำเร็จ: ' + err.message });
+  }
 
   if (id) {
     const idx = budgetSources.findIndex(s => s.id === parseInt(id));
@@ -1907,8 +2289,20 @@ app.post('/api/plan/save_budget_source.php', (req, res) => {
   res.json({ status: 'success', message: 'บันทึกแหล่งงบประมาณสำเร็จ' });
 });
 
-app.post('/api/plan/delete_budget_source.php', (req, res) => {
+app.post('/api/plan/delete_budget_source.php', async (req, res) => {
   const { id } = req.body;
+  if (!id) return res.status(400).json({ status: 'error', message: 'ระบุ ID ไม่ถูกต้อง' });
+
+  try {
+    if (await isDbReady()) {
+      const pool = getDbPool();
+      await pool.query("DELETE FROM budget_sources WHERE id = ?", [parseInt(id)]);
+      return res.json({ status: 'success', message: 'ลบแหล่งงบประมาณจาก MySQL เรียบร้อย' });
+    }
+  } catch (err) {
+    return res.status(500).json({ status: 'error', message: 'ลบแหล่งงบประมาณจาก MySQL ไม่สำเร็จ: ' + err.message });
+  }
+
   const idx = budgetSources.findIndex(s => s.id === parseInt(id));
   if (idx !== -1) {
     const fId = budgetSources[idx].fiscal_year_id;
@@ -1927,7 +2321,7 @@ app.post('/api/plan/delete_budget_source.php', (req, res) => {
 });
 
 // 4. Save 100% Department Allocations
-app.post('/api/plan/save_allocations.php', (req, res) => {
+app.post('/api/plan/save_allocations.php', async (req, res) => {
   const { fiscal_year_id, allocations } = req.body;
   if (!Array.isArray(allocations)) {
     return res.status(400).json({ status: 'error', message: 'ข้อมูลการจัดสรรไม่ถูกต้อง' });
@@ -1938,6 +2332,24 @@ app.post('/api/plan/save_allocations.php', (req, res) => {
   
   if (Math.abs(totalPercent - 100) > 0.05) {
     return res.status(400).json({ status: 'error', message: `ผลรวมสัดส่วนต้องเท่ากับ 100% พอดี (ปัจจุบันได้ ${totalPercent.toFixed(2)}%)` });
+  }
+
+  try {
+    if (await isDbReady()) {
+      const pool = getDbPool();
+      for (const item of allocations) {
+        const pct = parseFloat(item.percentage) || 0;
+        const amt = parseFloat(item.allocated_amount) || 0;
+        await pool.query(`
+          UPDATE department_allocations 
+          SET percentage = ?, allocated_amount = ?, notes = ?
+          WHERE fiscal_year_id = ? AND department = ?
+        `, [pct, amt, item.notes || '', fId, item.department]);
+      }
+      return res.json({ status: 'success', message: 'บันทึกการจัดสรรงบประมาณ 100% ลง MySQL เรียบร้อย' });
+    }
+  } catch (err) {
+    return res.status(500).json({ status: 'error', message: 'บันทึกการจัดสรรลง MySQL ไม่สำเร็จ: ' + err.message });
   }
 
   const yearSources = budgetSources.filter(s => s.fiscal_year_id === fId);
@@ -1968,7 +2380,7 @@ app.post('/api/plan/save_allocations.php', (req, res) => {
 });
 
 // 5. Save Project (Create / Edit by Teacher or Dept Head)
-app.post('/api/plan/save_project.php', (req, res) => {
+app.post('/api/plan/save_project.php', async (req, res) => {
   const {
     id, fiscal_year_id, department, code, name, proposer_id, supervisor_id,
     strategy_alignment, standard_alignment, rationale, objectives, target_qty, target_quality,
@@ -1982,6 +2394,70 @@ app.post('/api/plan/save_project.php', (req, res) => {
 
   const fId = parseInt(fiscal_year_id) || 1;
   const pId = parseInt(proposer_id) || 8;
+  const bSourceId = parseInt(budget_source_id) || null;
+  const reqBudget = parseFloat(requested_budget) || 0;
+  const appBudget = approved_budget !== undefined ? parseFloat(approved_budget) : 0;
+
+  try {
+    if (await isDbReady()) {
+      const pool = getDbPool();
+      let projectId = id ? parseInt(id) : null;
+
+      if (projectId) {
+        await pool.query(`
+          UPDATE projects SET
+            department = ?, code = ?, name = ?, proposer_id = ?, supervisor_id = ?,
+            strategy_alignment = ?, standard_alignment = ?, rationale = ?, objectives = ?,
+            target_qty = ?, target_quality = ?, start_date = ?, end_date = ?, location = ?,
+            budget_source_id = ?, requested_budget = ?, approved_budget = ?,
+            expected_outcomes = ?, indicators = ?, evaluation_method = ?
+          WHERE id = ?
+        `, [
+          department, code || '', name, pId, supervisor_id || null,
+          strategy_alignment || '', standard_alignment || '', rationale || '', objectives || '',
+          target_qty || '', target_quality || '', start_date || null, end_date || null, location || '',
+          bSourceId, reqBudget, appBudget,
+          expected_outcomes || '', indicators || '', evaluation_method || '', projectId
+        ]);
+      } else {
+        const [result] = await pool.query(`
+          INSERT INTO projects (
+            fiscal_year_id, department, code, name, proposer_id, supervisor_id,
+            strategy_alignment, standard_alignment, rationale, objectives,
+            target_qty, target_quality, start_date, end_date, location,
+            budget_source_id, requested_budget, approved_budget,
+            expected_outcomes, indicators, evaluation_method, status
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'submitted')
+        `, [
+          fId, department, code || '', name, pId, supervisor_id || null,
+          strategy_alignment || '', standard_alignment || '', rationale || '', objectives || '',
+          target_qty || '', target_quality || '', start_date || null, end_date || null, location || '',
+          bSourceId, reqBudget, appBudget,
+          expected_outcomes || '', indicators || '', evaluation_method || ''
+        ]);
+        projectId = result.insertId;
+      }
+
+      if (Array.isArray(items) && projectId) {
+        await pool.query("DELETE FROM project_budget_items WHERE project_id = ?", [projectId]);
+        for (const it of items) {
+          const q = parseFloat(it.quantity) || 1;
+          const p = parseFloat(it.unit_price) || 0;
+          const t = parseFloat((q * p).toFixed(2)) || (parseFloat(it.total_price) || 0);
+          await pool.query(`
+            INSERT INTO project_budget_items (project_id, category, item_name, quantity, unit, unit_price, total_price)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+          `, [projectId, it.category || 'materials', it.item_name || '', q, it.unit || 'หน่วย', p, t]);
+        }
+      }
+
+      return res.json({ status: 'success', message: 'บันทึกโครงการลงในฐานข้อมูล MySQL สำเร็จ', project_id: projectId });
+    }
+  } catch (err) {
+    console.error('MySQL save_project error:', err);
+    return res.status(500).json({ status: 'error', message: 'บันทึกโครงการลง MySQL ไม่สำเร็จ: ' + err.message });
+  }
+
   const propUser = users.find(u => u.id === pId);
 
   let targetProject;
@@ -2088,9 +2564,32 @@ app.post('/api/plan/save_project.php', (req, res) => {
 });
 
 // 6. Screening & Budget Trimming / Adjustment (by Plan Officer / Dept Head)
-app.post('/api/plan/screen_project.php', (req, res) => {
+app.post('/api/plan/screen_project.php', async (req, res) => {
   const { project_id, adjusted_budget, screening_note, action } = req.body;
-  const project = projects.find(p => p.id === parseInt(project_id));
+  const pId = parseInt(project_id);
+
+  try {
+    if (await isDbReady()) {
+      const pool = getDbPool();
+      let statusToSet = 'screened';
+      if (action === 'screened') statusToSet = 'screened';
+      else if (action === 'revision_requested') statusToSet = 'revision_requested';
+      else if (action === 'rejected') statusToSet = 'rejected';
+      else if (action === 'dept_approved') statusToSet = 'dept_approved';
+
+      const adj = adjusted_budget !== undefined ? parseFloat(adjusted_budget) : null;
+      if (adj !== null) {
+        await pool.query("UPDATE projects SET status = ?, screening_note = ?, approved_budget = ? WHERE id = ?", [statusToSet, screening_note || '', adj, pId]);
+      } else {
+        await pool.query("UPDATE projects SET status = ?, screening_note = ? WHERE id = ?", [statusToSet, screening_note || '', pId]);
+      }
+      return res.json({ status: 'success', message: 'บันทึกผลการกลั่นกรองโครงการลงใน MySQL สำเร็จ' });
+    }
+  } catch (err) {
+    return res.status(500).json({ status: 'error', message: 'บันทึกผลการกลั่นกรองลง MySQL ไม่สำเร็จ: ' + err.message });
+  }
+
+  const project = projects.find(p => p.id === pId);
   if (!project) return res.status(404).json({ status: 'error', message: 'ไม่พบโครงการที่ระบุ' });
 
   if (adjusted_budget !== undefined) {
@@ -2100,7 +2599,6 @@ app.post('/api/plan/screen_project.php', (req, res) => {
     project.screening_note = screening_note;
   }
 
-  // Action: 'screened' (ผ่านการกลั่นกรอง), 'revision_requested' (ส่งกลับแก้ไข), 'rejected' (ตัดแผน)
   if (action === 'screened') {
     project.status = 'screened';
   } else if (action === 'revision_requested') {
@@ -2115,9 +2613,50 @@ app.post('/api/plan/screen_project.php', (req, res) => {
 });
 
 // 7. Director Approval Workflow
-app.post('/api/plan/approve_project.php', (req, res) => {
+app.post('/api/plan/approve_project.php', async (req, res) => {
   const { project_id, action, director_note, approved_budget } = req.body;
-  const project = projects.find(p => p.id === parseInt(project_id));
+  const pId = parseInt(project_id);
+
+  try {
+    if (await isDbReady()) {
+      const pool = getDbPool();
+      let statusToSet = action === 'approved' ? 'approved' : (action === 'revision_requested' ? 'revision_requested' : 'rejected');
+      const nowStr = new Date().toISOString().replace('T', ' ').substring(0, 19);
+
+      let appBudget = parseFloat(approved_budget);
+      if (isNaN(appBudget) || appBudget <= 0) {
+        const [pRows] = await pool.query("SELECT requested_budget, approved_budget FROM projects WHERE id = ?", [pId]);
+        if (pRows.length > 0) {
+          appBudget = parseFloat(pRows[0].approved_budget) > 0 ? parseFloat(pRows[0].approved_budget) : parseFloat(pRows[0].requested_budget);
+        } else {
+          appBudget = 0;
+        }
+      }
+
+      await pool.query(`
+        UPDATE projects SET 
+          status = ?, 
+          director_note = ?, 
+          approved_budget = ?, 
+          approved_at = ?, 
+          execution_status = ?
+        WHERE id = ?
+      `, [
+        statusToSet, 
+        director_note || '', 
+        appBudget, 
+        action === 'approved' ? nowStr : null, 
+        action === 'approved' ? 'in_progress' : 'not_started',
+        pId
+      ]);
+
+      return res.json({ status: 'success', message: action === 'approved' ? 'อนุมัติโครงการและบรรจุในเล่มแผนปฏิบัติการลง MySQL เรียบร้อย' : 'บันทึกสถานะโครงการลง MySQL สำเร็จ' });
+    }
+  } catch (err) {
+    return res.status(500).json({ status: 'error', message: 'อนุมัติโครงการลง MySQL ไม่สำเร็จ: ' + err.message });
+  }
+
+  const project = projects.find(p => p.id === pId);
   if (!project) return res.status(404).json({ status: 'error', message: 'ไม่พบโครงการที่ระบุ' });
 
   if (director_note !== undefined) {
@@ -2144,15 +2683,45 @@ app.post('/api/plan/approve_project.php', (req, res) => {
 });
 
 // 8. Track Project Progress & Execution
-app.post('/api/plan/save_progress.php', (req, res) => {
+app.post('/api/plan/save_progress.php', async (req, res) => {
   const { project_id, progress_percentage, execution_status, results_summary, obstacles, recommendations, recorded_by } = req.body;
-  const project = projects.find(p => p.id === parseInt(project_id));
+  const pId = parseInt(project_id);
+  const pct = Math.min(100, Math.max(0, parseInt(progress_percentage) || 0));
+
+  try {
+    if (await isDbReady()) {
+      const pool = getDbPool();
+      await pool.query(`
+        UPDATE projects SET
+          progress_percentage = ?,
+          execution_status = ?,
+          results_summary = ?
+        WHERE id = ?
+      `, [pct, execution_status || 'in_progress', results_summary || '', pId]);
+
+      await pool.query(`
+        INSERT INTO project_progress_logs (project_id, log_date, progress_percent, details, obstacles, solutions, recorded_by)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+      `, [
+        pId,
+        new Date().toISOString().split('T')[0],
+        pct,
+        results_summary || 'รายงานผลความก้าวหน้าโครงการ',
+        obstacles || '',
+        recommendations || '',
+        recorded_by || 'ผู้รับผิดชอบโครงการ'
+      ]);
+
+      return res.json({ status: 'success', message: 'บันทึกการติดตามความก้าวหน้าโครงการลง MySQL เรียบร้อย' });
+    }
+  } catch (err) {
+    return res.status(500).json({ status: 'error', message: 'บันทึกความก้าวหน้าลง MySQL ไม่สำเร็จ: ' + err.message });
+  }
+
+  const project = projects.find(p => p.id === pId);
   if (!project) return res.status(404).json({ status: 'error', message: 'ไม่พบโครงการ' });
 
-  const pct = parseInt(progress_percentage);
-  if (!isNaN(pct)) {
-    project.progress_percentage = Math.min(100, Math.max(0, pct));
-  }
+  project.progress_percentage = pct;
   if (execution_status) {
     project.execution_status = execution_status;
   }
@@ -2176,7 +2745,7 @@ app.post('/api/plan/save_progress.php', (req, res) => {
 });
 
 // 9. Actual Expenses & Budget Calculation
-app.post('/api/plan/save_expense.php', (req, res) => {
+app.post('/api/plan/save_expense.php', async (req, res) => {
   const { id, project_id, expense_date, doc_number, title, category, amount, disbursed_by, receipt_note } = req.body;
   if (!project_id || !title || !amount) {
     return res.status(400).json({ status: 'error', message: 'กรุณากรอกข้อมูลการเบิกจ่ายให้ครบถ้วน' });
@@ -2184,6 +2753,50 @@ app.post('/api/plan/save_expense.php', (req, res) => {
 
   const pId = parseInt(project_id);
   const numAmount = parseFloat(amount) || 0;
+  const expDate = expense_date || new Date().toISOString().split('T')[0];
+
+  try {
+    if (await isDbReady()) {
+      const pool = getDbPool();
+      if (id) {
+        await pool.query(`
+          UPDATE project_expenses 
+          SET expense_date = ?, doc_number = ?, title = ?, category = ?, amount = ?, disbursed_by = ?, receipt_note = ?
+          WHERE id = ?
+        `, [expDate, doc_number || '', title, category || 'general', numAmount, disbursed_by || '', receipt_note || '', parseInt(id)]);
+      } else {
+        await pool.query(`
+          INSERT INTO project_expenses (project_id, expense_date, doc_number, title, category, amount, disbursed_by, receipt_note)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        `, [pId, expDate, doc_number || '', title, category || 'general', numAmount, disbursed_by || '', receipt_note || '']);
+      }
+
+      const [pExpenses] = await pool.query("SELECT * FROM project_expenses WHERE project_id = ?", [pId]);
+      const [projRows] = await pool.query("SELECT approved_budget, requested_budget FROM projects WHERE id = ?", [pId]);
+      const p = projRows[0] || {};
+      const approved = parseFloat(p.approved_budget) || 0;
+      const requested = parseFloat(p.requested_budget) || 0;
+      const spent = pExpenses.reduce((s, e) => s + parseFloat(e.amount || 0), 0);
+      const baseline = approved > 0 ? approved : requested;
+
+      return res.json({
+        status: 'success',
+        message: 'บันทึกรายการเบิกจ่ายลง MySQL เรียบร้อยแล้ว',
+        financials: {
+          requested,
+          approved,
+          spent,
+          remaining: baseline - spent,
+          percentSpent: baseline > 0 ? Math.min(100, Math.round((spent / baseline) * 100)) : 0,
+          expenseCount: pExpenses.length,
+          expenses: pExpenses
+        }
+      });
+    }
+  } catch (err) {
+    console.error('MySQL save_expense error:', err);
+    return res.status(500).json({ status: 'error', message: 'บันทึกข้อมูลเบิกจ่ายลง MySQL ไม่สำเร็จ: ' + err.message });
+  }
 
   if (id) {
     const idx = expenses.findIndex(e => e.id === parseInt(id));
@@ -2217,8 +2830,45 @@ app.post('/api/plan/save_expense.php', (req, res) => {
   res.json({ status: 'success', message: 'บันทึกรายการเบิกจ่ายสำเร็จ', financials: fin });
 });
 
-app.post('/api/plan/delete_expense.php', (req, res) => {
+app.post('/api/plan/delete_expense.php', async (req, res) => {
   const { id } = req.body;
+  if (!id) return res.status(400).json({ status: 'error', message: 'ระบุ ID ไม่ถูกต้อง' });
+
+  try {
+    if (await isDbReady()) {
+      const pool = getDbPool();
+      const [expRows] = await pool.query("SELECT project_id FROM project_expenses WHERE id = ?", [parseInt(id)]);
+      if (expRows.length > 0) {
+        const pId = expRows[0].project_id;
+        await pool.query("DELETE FROM project_expenses WHERE id = ?", [parseInt(id)]);
+
+        const [pExpenses] = await pool.query("SELECT * FROM project_expenses WHERE project_id = ?", [pId]);
+        const [projRows] = await pool.query("SELECT approved_budget, requested_budget FROM projects WHERE id = ?", [pId]);
+        const p = projRows[0] || {};
+        const approved = parseFloat(p.approved_budget) || 0;
+        const requested = parseFloat(p.requested_budget) || 0;
+        const spent = pExpenses.reduce((s, e) => s + parseFloat(e.amount || 0), 0);
+        const baseline = approved > 0 ? approved : requested;
+
+        return res.json({
+          status: 'success',
+          message: 'ลบรายการเบิกจ่ายจาก MySQL เรียบร้อย',
+          financials: {
+            requested,
+            approved,
+            spent,
+            remaining: baseline - spent,
+            percentSpent: baseline > 0 ? Math.min(100, Math.round((spent / baseline) * 100)) : 0,
+            expenseCount: pExpenses.length,
+            expenses: pExpenses
+          }
+        });
+      }
+    }
+  } catch (err) {
+    return res.status(500).json({ status: 'error', message: 'ลบรายการจาก MySQL ไม่สำเร็จ: ' + err.message });
+  }
+
   const idx = expenses.findIndex(e => e.id === parseInt(id));
   if (idx !== -1) {
     const pId = expenses[idx].project_id;
@@ -2405,10 +3055,61 @@ app.get('/api/plan/get_project_detail.php', (req, res) => {
   });
 });
 
-// 13. Save User
-app.post('/api/plan/save_user.php', (req, res) => {
-  const { id, username, name, position, department, role, phone, email } = req.body;
+// 13. Users Management (Get & Save)
+app.get(['/api/plan/get_users.php', '/api/users/get_users.php'], async (req, res) => {
+  try {
+    if (await isDbReady()) {
+      const pool = getDbPool();
+      const [dbUsers] = await pool.query(`
+        SELECT id, school_id, username, name, position, department, role, phone, email, is_approved, created_at
+        FROM users 
+        ORDER BY 
+          CASE role 
+            WHEN 'super_admin' THEN 1
+            WHEN 'director' THEN 2
+            WHEN 'deputy_director' THEN 3
+            WHEN 'school_admin' THEN 4
+            WHEN 'plan_officer' THEN 5
+            WHEN 'department_head' THEN 6
+            ELSE 7 
+          END, id ASC
+      `);
+      return res.json({ status: 'success', users: dbUsers, total: dbUsers.length });
+    }
+  } catch (err) {
+    console.warn('MySQL get_users failed:', err.message);
+  }
+  res.json({ status: 'success', users: users, total: users.length });
+});
+
+app.post(['/api/plan/save_user.php', '/api/users/save_user.php'], async (req, res) => {
+  const { id, username, name, position, department, role, phone, email, id_card, school_id } = req.body;
   if (!name || !role) return res.status(400).json({ status: 'error', message: 'กรุณากรอกชื่อและบทบาท' });
+
+  try {
+    if (await isDbReady()) {
+      const pool = getDbPool();
+      const sId = parseInt(school_id) || 1;
+      const uName = username ? username.trim() : ('user_' + Date.now());
+
+      if (id) {
+        await pool.query(`
+          UPDATE users 
+          SET name = ?, username = ?, position = ?, department = ?, role = ?, phone = ?, email = ?
+          WHERE id = ?
+        `, [name.trim(), uName, position || 'ครู', department || 'academic', role, phone || '', email || '', parseInt(id)]);
+      } else {
+        await pool.query(`
+          INSERT INTO users (school_id, name, username, id_card, password, role, position, department, phone, email, must_change_password, is_approved)
+          VALUES (?, ?, ?, ?, '123456', ?, ?, ?, ?, ?, 1, 1)
+        `, [sId, name.trim(), uName, id_card || '', role, position || 'ครู', department || 'academic', phone || '', email || '']);
+      }
+
+      return res.json({ status: 'success', message: 'บันทึกข้อมูลผู้ใช้งานลงใน MySQL เรียบร้อยแล้ว' });
+    }
+  } catch (err) {
+    return res.status(500).json({ status: 'error', message: 'บันทึกผู้ใช้ลง MySQL ไม่สำเร็จ: ' + err.message });
+  }
 
   if (id) {
     const idx = users.findIndex(u => u.id === parseInt(id));
@@ -2445,20 +3146,18 @@ app.post('/api/plan/save_user.php', (req, res) => {
 // Static & PHP Template Rendering
 // ==========================================
 
-const servePhpAsHtml = (filePath, req, res) => {
+const servePhpAsHtml = (filePath, req, res, activeSession = null) => {
   if (fs.existsSync(filePath)) {
     let content = fs.readFileSync(filePath, 'utf8');
 
-    // Parse role from query or default
-    const mockRole = req.query.mock_role || 'director';
-    const activeUser = users.find(u => u.role === mockRole) || users[1]; // default director
-
-    const mockSession = {
-      user_id: activeUser.id,
-      name: activeUser.name,
-      role: activeUser.role,
-      department: activeUser.department,
-      position: activeUser.position,
+    // Retrieve active session from argument or request cookies
+    const session = activeSession || getSession(req) || {
+      user_id: 1,
+      name: 'นายธีระพล เกียติวิทยา',
+      username: 'director',
+      role: 'director',
+      department: 'central',
+      position: 'ผู้อำนวยการโรงเรียน',
       school_id: schoolInfo.id,
       school_name: schoolInfo.name,
       smis_code: schoolInfo.smis_code || '10310001',
@@ -2468,17 +3167,25 @@ const servePhpAsHtml = (filePath, req, res) => {
       current_fiscal_year: '2568'
     };
 
-    // Replace <?= ... ?>
-    content = content.replace(/<\?=\s*\$_SESSION\['(.*?)'\]\s*\?>/g, (m, k) => mockSession[k] !== undefined ? mockSession[k] : '');
+    // Replace PHP htmlspecialchars expressions
+    content = content.replace(/<\?=\s*htmlspecialchars\(\$(.*?)\)\s*\?>/g, (m, k) => {
+      const val = session[k] !== undefined ? session[k] : (k === 'username' ? (session.name || session.username) : '');
+      return String(val || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    });
+    content = content.replace(/<\?=\s*\$_SESSION\['(.*?)'\]\s*\?>/g, (m, k) => session[k] !== undefined ? session[k] : '');
     content = content.replace(/<\?=\s*\$app_name\s*\?>/g, 'ระบบบริหารแผนปฏิบัติการประจำปีของโรงเรียน');
-    content = content.replace(/<\?=\s*\$username\s*\?>/g, mockSession.name);
-    content = content.replace(/<\?=\s*\$role\s*\?>/g, mockSession.role);
-    content = content.replace(/<\?=\s*\$school_name\s*\?>/g, mockSession.school_name);
-    content = content.replace(/<\?=\s*\$school_logo\s*\?>/g, mockSession.school_logo);
-    content = content.replace(/<\?=\s*\$smis_code\s*\?>/g, mockSession.smis_code);
-    content = content.replace(/<\?=\s*\$affiliation\s*\?>/g, mockSession.affiliation);
-    content = content.replace(/<\?=\s*\$current_fiscal_year\s*\?>/g, mockSession.current_fiscal_year);
-    content = content.replace(/<\?=\s*mb_substr\(\$username,\s*0,\s*1\)\s*\?>/g, mockSession.name.charAt(0));
+    content = content.replace(/<\?=\s*\$username\s*\?>/g, session.name || session.username || '');
+    content = content.replace(/<\?=\s*\$currentUserAccount\s*\?>/g, session.username || 'superadmin');
+    content = content.replace(/<\?=\s*\$currentUserName\s*\?>/g, session.name || 'Super Admin');
+    content = content.replace(/<\?=\s*\$systemAffiliation\s*\?>/g, 'สำนักงานคณะกรรมการการศึกษาขั้นพื้นฐาน (สพฐ.) กระทรวงศึกษาธิการ');
+    content = content.replace(/<\?=\s*\$role\s*\?>/g, session.role || '');
+    content = content.replace(/<\?=\s*\$school_name\s*\?>/g, session.school_name || schoolInfo.name);
+    content = content.replace(/<\?=\s*\$school_logo\s*\?>/g, session.school_logo || schoolInfo.logo_url || '');
+    content = content.replace(/<\?=\s*\$smis_code\s*\?>/g, session.smis_code || schoolInfo.smis_code || '10310001');
+    content = content.replace(/<\?=\s*\$affiliation\s*\?>/g, session.affiliation || schoolInfo.affiliation);
+    content = content.replace(/<\?=\s*\$current_fiscal_year\s*\?>/g, session.current_fiscal_year || '2568');
+    content = content.replace(/<\?=\s*mb_substr\(\$username,\s*0,\s*1\)\s*\?>/g, (session.name || 'U').charAt(0));
+    content = content.replace(/<\?=\s*mb_substr\(\$currentUserName,\s*0,\s*1\)\s*\?>/g, (session.name || 'S').charAt(0));
 
     // Handle include files: <?php include ... ?> or require_once
     content = content.replace(/<\?php\s+(?:include|require|include_once|require_once)\s+['"](.*?)['"];?\s*\?>/g, (m, incPath) => {
@@ -2499,12 +3206,64 @@ const servePhpAsHtml = (filePath, req, res) => {
   }
 };
 
-app.get('/', (req, res) => {
+app.get(['/', '/index.php'], (req, res) => {
   servePhpAsHtml(path.join(__dirname, 'index.php'), req, res);
 });
 
+// Super Admin dedicated page with strict session & role verification
+app.get(['/super_admin.php', '/superadmin.php'], async (req, res) => {
+  const session = getSession(req);
+  // Requirement 5, 9: If not logged in, redirect immediately to login
+  if (!session) {
+    return res.redirect('/index.php?error=unauthorized');
+  }
+  // Requirement 5, 6, 9: If not super_admin, redirect immediately to dashboard
+  if (session.role !== 'super_admin') {
+    return res.redirect('/dashboard.php?error=access_denied');
+  }
+  // Database / store verification of actual role
+  let realRole = null;
+  if (await isDbReady()) {
+    try {
+      const pool = getDbPool();
+      const [rows] = await pool.query('SELECT role FROM users WHERE id = ? LIMIT 1', [session.user_id]);
+      if (Array.isArray(rows) && rows.length > 0) {
+        realRole = rows[0].role;
+      }
+    } catch (e) {}
+  }
+  if (!realRole) {
+    const memUser = users.find(u => u.id === session.user_id || u.username === session.username);
+    if (memUser) realRole = memUser.role;
+  }
+  if (realRole && realRole !== 'super_admin') {
+    return res.redirect('/dashboard.php?error=access_denied');
+  }
+
+  servePhpAsHtml(path.join(__dirname, 'super_admin.php'), req, res, session);
+});
+
+// School Dashboard page
 app.get('/dashboard.php', (req, res) => {
-  servePhpAsHtml(path.join(__dirname, 'dashboard.php'), req, res);
+  const session = getSession(req);
+  if (!session) {
+    return res.redirect('/index.php?error=unauthorized');
+  }
+  // Requirement 1, 7: If super_admin enters dashboard.php, redirect to dedicated super_admin.php
+  if (session.role === 'super_admin') {
+    return res.redirect('/super_admin.php');
+  }
+  servePhpAsHtml(path.join(__dirname, 'dashboard.php'), req, res, session);
+});
+
+// Logout endpoint
+app.get('/logout.php', (req, res) => {
+  const cookies = parseCookies(req);
+  if (cookies.PHPSESSID) {
+    serverSessions.delete(cookies.PHPSESSID);
+  }
+  res.setHeader('Set-Cookie', 'PHPSESSID=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT');
+  res.redirect('/index.php');
 });
 
 app.get('/print_project.php', (req, res) => {

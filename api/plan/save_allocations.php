@@ -22,7 +22,8 @@ if (abs($sumPct - 100.0) > 0.05) {
 }
 
 if (!$pdo) {
-    echo json_encode(['status' => 'success', 'message' => 'บันทึกการจัดสรรสำเร็จ (จำลอง)']);
+    http_response_code(503);
+    echo json_encode(['status' => 'error', 'message' => 'ยังไม่ได้เชื่อมต่อฐานข้อมูล MySQL กรุณาตั้งค่าการเชื่อมต่อในส่วน Super Admin']);
     exit;
 }
 

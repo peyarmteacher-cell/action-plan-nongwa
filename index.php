@@ -494,17 +494,22 @@
                     if (data.school) {
                         localStorage.setItem('schoolInfo', JSON.stringify(data.school));
                     }
-                    // Redirect to dashboard with mock_role
-                    const targetRole = explicitRole || user.role || 'director';
-                    window.location.href = `dashboard.php?mock_role=${targetRole}`;
+                    // Redirect directly based on role and server response (no mock_role)
+                    if (data.redirect) {
+                        window.location.href = data.redirect;
+                    } else if (user.role === 'super_admin' || explicitRole === 'super_admin') {
+                        window.location.href = 'super_admin.php';
+                    } else {
+                        window.location.href = 'dashboard.php';
+                    }
                 } else {
                     errDiv.innerText = data.message || 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง';
                     errDiv.classList.remove('hidden');
                 }
             } catch (err) {
                 console.error(err);
-                // Preview fallback
-                window.location.href = `dashboard.php?mock_role=${explicitRole || username}`;
+                errDiv.innerText = 'เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์';
+                errDiv.classList.remove('hidden');
             } finally {
                 btn.disabled = false;
                 btn.innerHTML = '<i data-lucide="log-in" class="w-4 h-4 mr-2"></i> เข้าสู่ระบบบริหารแผนปฏิบัติการ';
@@ -591,6 +596,20 @@
 
         // On load, fetch current school info to customize branding
         window.addEventListener('DOMContentLoaded', async () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const errParam = urlParams.get('error');
+            if (errParam) {
+                const errDiv = document.getElementById('loginError');
+                if (errDiv) {
+                    if (errParam === 'unauthorized') {
+                        errDiv.innerText = '🔒 กรุณาเข้าสู่ระบบก่อนเข้าใช้งาน';
+                    } else if (errParam === 'access_denied') {
+                        errDiv.innerText = '⛔ คุณไม่มีสิทธิ์เข้าถึงหน้านั้น กรุณาเข้าสู่ระบบด้วยสิทธิ์ที่ถูกต้อง';
+                    }
+                    errDiv.classList.remove('hidden');
+                }
+            }
+
             try {
                 const res = await fetch('/api/school/get_settings.php');
                 const data = await res.json();

@@ -1,5 +1,8 @@
 <?php
+ob_start();
 session_start();
+error_reporting(0);
+ini_set('display_errors', '0');
 header('Content-Type: application/json; charset=utf-8');
 
 $data = json_decode(file_get_contents('php://input'), true);

@@ -64,6 +64,7 @@ if ($isSuperAdmin) {
 
         echo json_encode([
             'status' => 'success',
+            'redirect' => 'super_admin.php',
             'user' => $userPayload,
             'school' => [
                 'id' => 1,
@@ -109,8 +110,11 @@ if ($pdo instanceof PDO) {
                 $_SESSION['name'] = $user['name'];
                 $_SESSION['school_id'] = $user['school_id'];
 
+                $redirectUrl = ($user['role'] === 'super_admin') ? 'super_admin.php' : 'dashboard.php';
+
                 echo json_encode([
                     'status' => 'success',
+                    'redirect' => $redirectUrl,
                     'user' => $user,
                     'school' => [
                         'id' => $user['school_id'],
@@ -147,6 +151,7 @@ if (isset($demoUsers[$username]) && ($password === '123' || $password === '12345
 
     echo json_encode([
         'status' => 'success',
+        'redirect' => 'dashboard.php',
         'user' => $u,
         'school' => [
             'id' => 1,

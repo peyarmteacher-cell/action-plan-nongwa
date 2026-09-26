@@ -2,8 +2,6 @@
     console.log('teachers.php script block started');
     async function loadSchoolTeachers() {
         const schoolId = '<?= $_SESSION['school_id'] ?? '' ?>';
-        const mockRole = new URLSearchParams(window.location.search).get('mock_role') || '';
-        console.log('loadSchoolTeachers: school_id =', schoolId, 'mock_role =', mockRole);
         
         if (!schoolId) {
             console.warn('loadSchoolTeachers: No school_id found in session');
@@ -13,7 +11,7 @@
         }
 
         try {
-            const res = await fetch(`api/get_school_teachers.php?school_id=${schoolId}&mock_role=${mockRole}`);
+            const res = await fetch(`api/get_school_teachers.php?school_id=${schoolId}`);
             const teachers = await res.json();
             console.log('loadSchoolTeachers: Received teachers:', teachers);
             
