@@ -48,9 +48,9 @@ if ($isSuperAdmin) {
             'role' => 'super_admin',
             'department' => 'central',
             'position' => $superAdminPos,
-            'school_id' => 1,
-            'school_name' => 'โรงเรียนอนุบาลพัฒนาวิทยา',
-            'smis_code' => '10310001',
+            'school_id' => null,
+            'school_name' => 'ศูนย์บริหารระบบเขตพื้นที่ฯ / สพฐ.',
+            'smis_code' => '',
             'logo_url' => 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/87/Garuda_Emb_Thailand.svg/200px-Garuda_Emb_Thailand.svg.png',
             'phone' => $superAdminPhone,
             'email' => $superAdminEmail,
@@ -66,18 +66,13 @@ if ($isSuperAdmin) {
             'status' => 'success',
             'redirect' => 'super_admin.php',
             'user' => $userPayload,
-            'school' => [
-                'id' => 1,
-                'name' => 'โรงเรียนอนุบาลพัฒนาวิทยา',
-                'smis_code' => '10310001',
-                'affiliation' => 'สำนักงานเขตพื้นที่การศึกษาประถมศึกษาบุรีรัมย์ เขต 1'
-            ]
+            'school' => null
         ], JSON_UNESCAPED_UNICODE);
         exit;
     }
 }
 
-// 2. Try MySQL Database authentication for regular users
+// 2. MySQL Database authentication for all users
 $pdo = null;
 if (file_exists($configFile)) {
     require_once $configFile;
@@ -109,6 +104,9 @@ if ($pdo instanceof PDO) {
                 $_SESSION['role'] = $user['role'];
                 $_SESSION['name'] = $user['name'];
                 $_SESSION['school_id'] = $user['school_id'];
+                $_SESSION['school_name'] = $user['school_name'] ?? '';
+                $_SESSION['smis_code'] = $user['smis_code'] ?? '';
+                $_SESSION['affiliation'] = $user['affiliation'] ?? '';
 
                 $redirectUrl = ($user['role'] === 'super_admin') ? 'super_admin.php' : 'dashboard.php';
 
@@ -118,8 +116,8 @@ if ($pdo instanceof PDO) {
                     'user' => $user,
                     'school' => [
                         'id' => $user['school_id'],
-                        'name' => $user['school_name'] ?: 'โรงเรียนอนุบาลพัฒนาวิทยา',
-                        'smis_code' => $user['smis_code'] ?: '10310001',
+                        'name' => $user['school_name'] ?: 'สถานศึกษา',
+                        'smis_code' => $user['smis_code'] ?: '',
                         'affiliation' => $user['affiliation'] ?: 'สำนักงานเขตพื้นที่การศึกษา'
                     ]
                 ], JSON_UNESCAPED_UNICODE);
@@ -127,43 +125,11 @@ if ($pdo instanceof PDO) {
             }
         }
     } catch (Exception $e) {
-        // Fallback to demo users
+        // Query error
     }
-}
-
-// 3. Fallback standard demo users
-$demoUsers = [
-    'schooladmin' => ['id' => 2, 'username' => 'schooladmin', 'name' => 'นางสาวสุภาวดี ดูแลระบบ', 'role' => 'school_admin', 'position' => 'ผู้ดูแลระบบสารสนเทศโรงเรียน', 'department' => 'budget', 'school_id' => 1],
-    'director' => ['id' => 3, 'username' => 'director', 'name' => 'นายธีระพล เกียรติวิทยา', 'role' => 'director', 'position' => 'ผู้อำนวยการโรงเรียน', 'department' => 'central', 'school_id' => 1],
-    'planofficer' => ['id' => 5, 'username' => 'planofficer', 'name' => 'นางวิไลพร งบมั่นคง', 'role' => 'plan_officer', 'position' => 'เจ้าหน้าที่แผนงานและงบประมาณ', 'department' => 'budget', 'school_id' => 1],
-    'head_academic' => ['id' => 6, 'username' => 'head_academic', 'name' => 'นางกัญญา วิชาการดี', 'role' => 'department_head', 'position' => 'หัวหน้ากลุ่มบริหารวิชาการ', 'department' => 'academic', 'school_id' => 1],
-    'teacher_somchai' => ['id' => 10, 'username' => 'teacher_somchai', 'name' => 'นายสมชาย สอนสนุก', 'role' => 'teacher', 'position' => 'ครู คศ.1', 'department' => 'academic', 'school_id' => 1],
-];
-
-if (isset($demoUsers[$username]) && ($password === '123' || $password === '123456' || $password === 'password123')) {
-    $u = $demoUsers[$username];
-    $u['must_change_password'] = 0;
-    $_SESSION['user_id'] = $u['id'];
-    $_SESSION['username'] = $u['username'];
-    $_SESSION['role'] = $u['role'];
-    $_SESSION['name'] = $u['name'];
-    $_SESSION['school_id'] = 1;
-
-    echo json_encode([
-        'status' => 'success',
-        'redirect' => 'dashboard.php',
-        'user' => $u,
-        'school' => [
-            'id' => 1,
-            'name' => 'โรงเรียนอนุบาลพัฒนาวิทยา',
-            'smis_code' => '10310001',
-            'affiliation' => 'สำนักงานเขตพื้นที่การศึกษาประถมศึกษาบุรีรัมย์ เขต 1'
-        ]
-    ], JSON_UNESCAPED_UNICODE);
-    exit;
 }
 
 echo json_encode([
     'status' => 'error',
-    'message' => 'ชื่อผู้ใช้งาน (หรือเลขบัตร ปชช.) หรือรหัสผ่านไม่ถูกต้อง (รหัสผ่านเริ่มต้นคือ 123456 หรือ 123)'
+    'message' => 'ชื่อผู้ใช้งาน (หรือเลขบัตร ปชช.) หรือรหัสผ่านไม่ถูกต้อง'
 ]);

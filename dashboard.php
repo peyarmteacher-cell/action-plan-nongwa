@@ -16,9 +16,9 @@ if ($_SESSION['role'] === 'super_admin') {
 $user_id = $_SESSION['user_id'];
 $username = $_SESSION['name'] ?? $_SESSION['username'] ?? 'ผู้ใช้งาน';
 $role = $_SESSION['role'];
-$school_name = $_SESSION['school_name'] ?? 'โรงเรียนอนุบาลพัฒนาวิทยา';
-$smis_code = $_SESSION['smis_code'] ?? '10310001';
-$affiliation = $_SESSION['affiliation'] ?? 'สำนักงานเขตพื้นที่การศึกษาประถมศึกษาบุรีรัมย์ เขต 1';
+$school_name = $_SESSION['school_name'] ?? 'สถานศึกษา';
+$smis_code = $_SESSION['smis_code'] ?? '';
+$affiliation = $_SESSION['affiliation'] ?? 'สำนักงานเขตพื้นที่การศึกษา';
 $school_logo = $_SESSION['school_logo'] ?? '';
 ?>
 <!DOCTYPE html>
@@ -1015,7 +1015,7 @@ $school_logo = $_SESSION['school_logo'] ?? '';
                                 <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">เปิดดำเนินงาน</span>
                             </div>
                             <p class="text-xs text-blue-200 truncate" id="previewHeaderSchoolText">
-                                โรงเรียนอนุบาลพัฒนาวิทยา (รหัส SMIS: 10310001) • สพป.บุรีรัมย์ เขต 1
+                                <?= htmlspecialchars($school_name) ?> (รหัส SMIS: <?= htmlspecialchars($smis_code ?: '-') ?>) • <?= htmlspecialchars($affiliation) ?>
                             </p>
                         </div>
                     </div>
@@ -1037,7 +1037,7 @@ $school_logo = $_SESSION['school_logo'] ?? '';
                         <div class="md:col-span-2">
                             <label class="block text-xs font-bold text-slate-700 mb-1">ชื่อโรงเรียน / สถานศึกษา <span class="text-red-500">*</span></label>
                             <input type="text" id="set_school_name" required oninput="updateHeaderPreview()" 
-                                   placeholder="เช่น โรงเรียนอนุบาลพัฒนาวิทยา" 
+                                   placeholder="ระบุชื่อสถานศึกษา" 
                                    class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 outline-none focus:bg-white focus:border-blue-500">
                         </div>
                     </div>
@@ -1046,7 +1046,7 @@ $school_logo = $_SESSION['school_logo'] ?? '';
                     <div>
                         <label class="block text-xs font-bold text-slate-700 mb-1">หน่วยงานต้นสังกัด <span class="text-red-500">*</span></label>
                         <input type="text" id="set_affiliation" required oninput="updateHeaderPreview()" 
-                               placeholder="เช่น สำนักงานเขตพื้นที่การศึกษาประถมศึกษาบุรีรัมย์ เขต 1 สำนักงานคณะกรรมการการศึกษาขั้นพื้นฐาน" 
+                               placeholder="ระบุหน่วยงานต้นสังกัด" 
                                class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:bg-white focus:border-blue-500">
                     </div>
 
@@ -1121,15 +1121,15 @@ $school_logo = $_SESSION['school_logo'] ?? '';
                     <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
                         <div>
                             <label class="block text-xs font-semibold text-slate-700 mb-1">ชื่อผู้อำนวยการสถานศึกษา</label>
-                            <input type="text" id="set_director_name" placeholder="นายธีระพล เกียรติวิทยา" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none">
+                            <input type="text" id="set_director_name" placeholder="ชื่อ-สกุล ผู้อำนวยการ" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none">
                         </div>
                         <div>
                             <label class="block text-xs font-semibold text-slate-700 mb-1">ตำแหน่งผู้อำนวยการ</label>
-                            <input type="text" id="set_director_position" placeholder="ผู้อำนวยการโรงเรียนอนุบาลพัฒนาวิทยา" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none">
+                            <input type="text" id="set_director_position" placeholder="เช่น ผู้อำนวยการสถานศึกษา" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none">
                         </div>
                         <div>
                             <label class="block text-xs font-semibold text-slate-700 mb-1">เจ้าหน้าที่แผนงานและงบประมาณ</label>
-                            <input type="text" id="set_plan_officer_name" placeholder="นางวิไลพร งบมั่นคง" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none">
+                            <input type="text" id="set_plan_officer_name" placeholder="ชื่อ-สกุล จนท.แผนงาน" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none">
                         </div>
                     </div>
 
@@ -1235,7 +1235,7 @@ $school_logo = $_SESSION['school_logo'] ?? '';
 
                     <div>
                         <label class="block text-xs font-bold text-slate-700 mb-1">สถานที่ดำเนินงาน</label>
-                        <input type="text" id="proj_location" value="โรงเรียนอนุบาลพัฒนาวิทยา" 
+                        <input type="text" id="proj_location" placeholder="ระบุสถานที่ดำเนินงาน (เช่น ภายในสถานศึกษา)" 
                                class="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none">
                     </div>
                 </div>

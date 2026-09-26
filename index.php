@@ -29,7 +29,7 @@
             </div>
             <h1 class="text-2xl md:text-3xl font-extrabold text-white tracking-tight">ระบบบริหารแผนปฏิบัติการประจำปี</h1>
             <p id="loginSchoolAffiliation" class="text-blue-200 text-xs md:text-sm mt-1">
-                โรงเรียนอนุบาลพัฒนาวิทยา (รหัส SMIS: 10310001) • สพฐ. กระทรวงศึกษาธิการ
+                ระบบบริหารแผนปฏิบัติการประจำปีและงบประมาณสถานศึกษา • สพฐ.
             </p>
         </div>
 
@@ -53,98 +53,6 @@
             <!-- TAB 1: LOGIN -->
             <!-- ============================================== -->
             <div id="tabContentLogin">
-                <!-- Super Admin Initial Credentials Banner -->
-                <div class="mb-4 p-3 bg-gradient-to-r from-indigo-50 to-blue-50 border border-indigo-200/80 rounded-2xl flex items-start gap-2.5">
-                    <div class="p-2 bg-indigo-600 text-white rounded-xl shrink-0 mt-0.5 shadow-xs">
-                        <i data-lucide="shield-alert" class="w-4 h-4"></i>
-                    </div>
-                    <div class="text-xs text-indigo-950 leading-relaxed">
-                        <div class="font-bold flex items-center gap-1.5 text-indigo-900">
-                            <span>บัญชี Super Admin สำหรับติดตั้งระบบและเชื่อมต่อฐานข้อมูล</span>
-                            <span class="px-1.5 py-0.2 rounded bg-indigo-200/60 text-indigo-800 text-[10px]">เริ่มต้น</span>
-                        </div>
-                        <p class="text-[11px] text-indigo-700/90 mt-0.5">
-                            Username: <code class="px-1.5 py-0.5 bg-white rounded font-mono font-bold text-indigo-900 border border-indigo-200">superadmin</code> 
-                            &nbsp;|&nbsp; รหัสผ่าน: <code class="px-1.5 py-0.5 bg-white rounded font-mono font-bold text-indigo-900 border border-indigo-200">password123</code> (หรือ 123456)
-                        </p>
-                        <p class="text-[10px] text-slate-500 mt-1">
-                            * เมื่อเข้าสู่ระบบแล้ว สามารถแก้ไข Username และ Password ได้ทันทีในเมนู Super Admin
-                        </p>
-                    </div>
-                </div>
-
-                <!-- One-Click Quick Role Switcher for fast evaluation -->
-                <div class="mb-6">
-                    <div class="flex items-center justify-between mb-2.5">
-                        <label class="block text-xs font-bold text-slate-600 uppercase tracking-wider">
-                            เข้าสู่ระบบด่วนตามสิทธิ์ (คลิกเพื่อทดสอบทันที)
-                        </label>
-                        <span class="text-[11px] text-slate-400">คลิกเข้าใช้งานได้ทันที</span>
-                    </div>
-
-                    <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                        <!-- Super Admin -->
-                        <button type="button" onclick="quickLogin('superadmin', 'password123', 'super_admin')" 
-                                class="flex flex-col items-start p-3 rounded-xl border border-indigo-200 bg-indigo-50/70 hover:bg-indigo-100 text-left transition group">
-                            <span class="text-xs font-bold text-indigo-900 flex items-center gap-1.5">
-                                <i data-lucide="globe-2" class="w-3.5 h-3.5 text-indigo-600"></i> Super Admin
-                            </span>
-                            <span class="text-[11px] text-indigo-700 mt-1 truncate w-full">ติดตั้ง DB & สิทธิ์ SMIS</span>
-                        </button>
-
-                        <!-- School Admin -->
-                        <button type="button" onclick="quickLogin('schooladmin', '123', 'school_admin')" 
-                                class="flex flex-col items-start p-3 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-left transition group">
-                            <span class="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-                                <i data-lucide="settings" class="w-3.5 h-3.5 text-slate-600"></i> Admin โรงเรียน
-                            </span>
-                            <span class="text-[11px] text-slate-500 mt-1 truncate w-full">ตั้งค่าโรงเรียน & โลโก้</span>
-                        </button>
-
-                        <!-- Director -->
-                        <button type="button" onclick="quickLogin('director', '123', 'director')" 
-                                class="flex flex-col items-start p-3 rounded-xl border border-blue-100 bg-blue-50/70 hover:bg-blue-100 text-left transition group">
-                            <span class="text-xs font-bold text-blue-900 flex items-center gap-1.5">
-                                <i data-lucide="award" class="w-3.5 h-3.5 text-blue-600"></i> ผู้อำนวยการ
-                            </span>
-                            <span class="text-[11px] text-slate-500 mt-1 truncate w-full">อนุมัติแผน/สั่งการ</span>
-                        </button>
-
-                        <!-- Plan Officer -->
-                        <button type="button" onclick="quickLogin('planofficer', '123', 'plan_officer')" 
-                                class="flex flex-col items-start p-3 rounded-xl border border-emerald-100 bg-emerald-50/70 hover:bg-emerald-100 text-left transition group">
-                            <span class="text-xs font-bold text-emerald-900 flex items-center gap-1.5">
-                                <i data-lucide="calculator" class="w-3.5 h-3.5 text-emerald-600"></i> จนท.แผน/งบประมาณ
-                            </span>
-                            <span class="text-[11px] text-slate-500 mt-1 truncate w-full">คำนวณงบรายหัว/ตัดแผน</span>
-                        </button>
-
-                        <!-- Department Head -->
-                        <button type="button" onclick="quickLogin('head_academic', '123', 'department_head')" 
-                                class="flex flex-col items-start p-3 rounded-xl border border-purple-100 bg-purple-50/70 hover:bg-purple-100 text-left transition group">
-                            <span class="text-xs font-bold text-purple-900 flex items-center gap-1.5">
-                                <i data-lucide="layers" class="w-3.5 h-3.5 text-purple-600"></i> หน.กลุ่มวิชาการ
-                            </span>
-                            <span class="text-[11px] text-slate-500 mt-1 truncate w-full">กลั่นกรองโครงการกลุ่ม</span>
-                        </button>
-
-                        <!-- Teacher -->
-                        <button type="button" onclick="quickLogin('teacher_somchai', '123', 'teacher')" 
-                                class="flex flex-col items-start p-3 rounded-xl border border-amber-100 bg-amber-50/70 hover:bg-amber-100 text-left transition group">
-                            <span class="text-xs font-bold text-amber-900 flex items-center gap-1.5">
-                                <i data-lucide="file-plus" class="w-3.5 h-3.5 text-amber-600"></i> ครูผู้เสนอโครงการ
-                            </span>
-                            <span class="text-[11px] text-slate-500 mt-1 truncate w-full">เสนอโครงการ / AI ร่าง</span>
-                        </button>
-                    </div>
-                </div>
-
-                <div class="relative flex py-2 items-center mb-6">
-                    <div class="flex-grow border-t border-slate-200"></div>
-                    <span class="flex-shrink mx-4 text-xs text-slate-400 font-medium">หรือเข้าสู่ระบบด้วยชื่อผู้ใช้ / เลขบัตร ปชช. 13 หลัก</span>
-                    <div class="flex-grow border-t border-slate-200"></div>
-                </div>
-
                 <!-- Login Form -->
                 <form id="loginForm" class="space-y-4" onsubmit="handleFormLogin(event)">
                     <div>
@@ -155,14 +63,14 @@
                             </div>
                             <input type="text" id="username" required 
                                    class="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 outline-none text-sm transition" 
-                                   placeholder="เช่น director, schooladmin, planofficer หรือเลข 13 หลัก" value="director">
+                                   placeholder="กรอกชื่อผู้ใช้งาน หรือเลขประจำตัวประชาชน 13 หลัก">
                         </div>
                     </div>
 
                     <div>
                         <div class="flex items-center justify-between mb-1.5">
                             <label class="block text-xs font-semibold text-slate-700">รหัสผ่าน</label>
-                            <span class="text-[11px] text-slate-400">ครั้งแรกกำหนดคือ 1-6 (123456)</span>
+                            <span class="text-[11px] text-slate-400">รหัสผ่านสำหรับเข้าสู่ระบบ</span>
                         </div>
                         <div class="relative">
                             <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
@@ -170,7 +78,7 @@
                             </div>
                             <input type="password" id="password" required 
                                    class="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 outline-none text-sm transition" 
-                                   placeholder="กรอกรหัสผ่าน (เริ่มต้น 123456 หรือ 123)" value="123">
+                                   placeholder="กรอกรหัสผ่าน">
                         </div>
                     </div>
 
@@ -216,21 +124,15 @@
                                 <input type="text" id="regSmisCode" maxlength="8" required 
                                        oninput="this.value = this.value.replace(/[^0-9]/g, ''); checkSmisRealtime();"
                                        class="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 outline-none text-sm font-mono tracking-wider transition" 
-                                       placeholder="เช่น 10310001 (8 หลัก)" value="10310001">
+                                       placeholder="กรอกรหัส SMIS 8 หลัก">
                             </div>
                             <button type="button" onclick="verifySmisCode(true)" 
                                     class="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 text-xs font-bold rounded-xl transition flex items-center gap-1.5 shrink-0 border border-slate-200">
                                 <i data-lucide="check-circle" class="w-4 h-4 text-blue-600"></i> ตรวจสอบ
                             </button>
                         </div>
-                        <!-- SMIS Verification Status Box -->
-                        <div id="smisFeedbackBox" class="mt-2 text-xs p-2.5 rounded-xl border flex items-center gap-2 bg-emerald-50 text-emerald-800 border-emerald-200">
-                            <i data-lucide="check" class="w-4 h-4 text-emerald-600 shrink-0"></i>
-                            <div>
-                                <span class="font-bold">โรงเรียนอนุบาลพัฒนาวิทยา</span>
-                                <span class="text-[11px] text-emerald-700 block">สพป.บุรีรัมย์ เขต 1 (สถานะ: เปิดใช้งานแล้วโดย Super Admin)</span>
-                            </div>
-                        </div>
+                        <!-- SMIS Verification Status Box (hidden initially) -->
+                        <div id="smisFeedbackBox" class="hidden mt-2 text-xs p-2.5 rounded-xl border flex items-center gap-2"></div>
                     </div>
 
                     <!-- Citizen ID (13 Digits) -->
@@ -377,7 +279,7 @@
     <script>
         lucide.createIcons();
 
-        let smisVerified = true;
+        let smisVerified = false;
 
         function switchAuthTab(tab) {
             const loginTab = document.getElementById('tabContentLogin');
@@ -458,12 +360,6 @@
                 box.innerHTML = `<i data-lucide="alert-circle" class="w-4 h-4 text-amber-600 shrink-0"></i> <span>ไม่สามารถตรวจสอบรหัส SMIS ได้ในขณะนี้</span>`;
             }
             lucide.createIcons();
-        }
-
-        async function quickLogin(roleUsername, password, role) {
-            document.getElementById('username').value = roleUsername;
-            document.getElementById('password').value = password || '123';
-            await doLogin(roleUsername, password || '123', role);
         }
 
         async function handleFormLogin(e) {
@@ -619,7 +515,7 @@
                     }
                     if (data.school.name) {
                         document.getElementById('loginSchoolAffiliation').innerText = 
-                            `${data.school.name} (รหัส SMIS: ${data.school.smis_code || '10310001'}) • ${data.school.affiliation || 'สพฐ. กระทรวงศึกษาธิการ'}`;
+                            `${data.school.name} (รหัส SMIS: ${data.school.smis_code || '-'}) • ${data.school.affiliation || 'สพฐ. กระทรวงศึกษาธิการ'}`;
                     }
                 }
             } catch (e) {

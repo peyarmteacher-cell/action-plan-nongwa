@@ -183,7 +183,7 @@ function renderAllViews() {
         if (headerLogo && appData.school.logo_url) headerLogo.src = appData.school.logo_url;
         if (headerSmis && appData.school.smis_code) headerSmis.innerText = appData.school.smis_code;
         if (headerName) {
-            headerName.innerHTML = `${appData.school.name} (รหัส SMIS: <span id="headerSmisCode">${appData.school.smis_code || '10310001'}</span>) • ${appData.school.affiliation}`;
+            headerName.innerHTML = `${appData.school.name} (รหัส SMIS: <span id="headerSmisCode">${appData.school.smis_code || '-'}</span>) • ${appData.school.affiliation}`;
         }
     }
     document.getElementById('fyDetailYear').innerText = `พ.ศ. ${appData.currentFiscalYear.year}`;
@@ -1750,7 +1750,7 @@ async function loadSchoolSettings() {
         const school = (result.status === 'success' && result.data) ? result.data : (appData ? appData.school : null);
         
         if (school) {
-            document.getElementById('set_smis_code').value = school.smis_code || '10310001';
+            document.getElementById('set_smis_code').value = school.smis_code || '';
             document.getElementById('set_school_name').value = school.name || '';
             document.getElementById('set_affiliation').value = school.affiliation || '';
             document.getElementById('set_logo_url').value = school.logo_url || '';
@@ -1775,7 +1775,7 @@ async function loadSchoolSettings() {
 
 function updateHeaderPreview() {
     const name = document.getElementById('set_school_name').value || 'ชื่อโรงเรียน';
-    const smis = document.getElementById('set_smis_code').value || '10310001';
+    const smis = document.getElementById('set_smis_code').value || '';
     const aff = document.getElementById('set_affiliation').value || 'สังกัดเขตพื้นที่ฯ';
     const logoUrl = document.getElementById('set_logo_url').value || 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/87/Garuda_Emb_Thailand.svg/200px-Garuda_Emb_Thailand.svg.png';
 
